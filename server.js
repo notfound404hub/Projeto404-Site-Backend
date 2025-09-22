@@ -7,21 +7,17 @@ dotenv.config();
 
 const app = express();
 
-// Middlewares
 app.use(cors());
 app.use(express.json());
 
-// Rotas
 app.use("/api/users", userRoutes);
 
-//Requisição
 app.use((req, res, next) => {
-    console.log(" Requisição:", req.method, req.url);
+    ("➡ Requisição:", req.method, JSON.stringify(req.url));
     next();
   });
 
-// Porta
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 500;
 app.listen(PORT, () => {
   console.log(`✅ Server rodando na porta ${PORT}`);
 });
