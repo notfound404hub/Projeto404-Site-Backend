@@ -7,15 +7,11 @@ const r = express.Router();
 r.post("/login", async (req, res) => {
   try {
     const { Usuario_Email, Usuario_Senha } = req.body;
-    console.log("Body recebido:", req.body);
-
 
     const [rows] = await pool.query(
       "SELECT * FROM Usuario WHERE Usuario_Email = ?",
-      [Usuario_Email]      
+      [Usuario_Email]
     );
-    console.log("Email recebido:", Usuario_Email);
-
 
     if (rows.length === 0) {
       return res.status(400).json({ error: "Email não cadastrado" });
@@ -30,7 +26,13 @@ r.post("/login", async (req, res) => {
       return res.status(400).json({ error: "Senha incorreta" });
     }
 
-    return res.status(200).json({ msg: "Login bem sucedido" });
+    // Pega o ID_Usuario do banco
+    const usuario = rows2[0]; 
+
+    return res.status(200).json({ 
+      msg: "Login bem sucedido",
+      ID_Usuario: usuario.ID_Usuario  // <-- Enviando o ID
+    });
   } catch (err) {
     console.error("Erro no login:", err);
     res.status(500).json({ error: "Erro no login" });
