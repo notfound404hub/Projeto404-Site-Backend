@@ -40,16 +40,16 @@ r.post("/login", async (req, res) => {
 
 r.post("/register", async (req, res) => {
   try {
-    const { Aluno_RA, Aluno_Nome, Aluno_Email, Aluno_CPF, Aluno_DDD, Aluno_Telefone } = req.body;
+    const { Usuario_RA, Usuario_Nome, Usuario_Email, Usuario_Senha, Usuario_Cargo, Usuario_Telefone } = req.body;
 
-    const [rows] = await pool.query("SELECT * FROM Aluno WHERE Aluno_Email = ?", [Aluno_Email]);
+    const [rows] = await pool.query("SELECT * FROM Usuario WHERE Usuario_Email = ?", [Usuario_Email]);
     if (rows.length > 0) {
       return res.status(400).json({ error: "Email já cadastrado" });
     }
 
     await pool.query(
-      "INSERT INTO Aluno(Aluno_RA, Aluno_Nome,Aluno_Email,Aluno_CPF,Aluno_DDD,Aluno_Telefone) VALUES (?, ?, ?, ?, ?, ?)",
-      [Aluno_RA, Aluno_Nome, Aluno_Email, Aluno_CPF, Aluno_DDD, Aluno_Telefone]
+      "INSERT INTO Usuario(Usuario_RA, Usuario_Nome,Usuario_Email,Usuario_Senha,Usuario_Cargo,Usuario_Telefone) VALUES (?, ?, ?, ?, ?, ?)",
+      [Usuario_RA, Usuario_Nome, Usuario_Email, Usuario_Senha, Usuario_Cargo, Usuario_Telefone]
     );
 
     res.status(201).json({ msg: "Usuário cadastrado com sucesso!" });
