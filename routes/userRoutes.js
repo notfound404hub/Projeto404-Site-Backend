@@ -59,7 +59,7 @@ r.post("/register", async (req, res) => {
   catch (err) {
     console.error("Erro no cadastro:", err); 
     res.status(500).json({ error: "Erro no cadastro", details: err.message });
-  }
+  } 
 
 });
 
