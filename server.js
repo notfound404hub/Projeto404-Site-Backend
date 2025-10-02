@@ -13,11 +13,11 @@ app.use(express.json());
 app.use("/api/users", userRoutes);
 
 app.use((req, res, next) => {
-    ("➡ Requisição:", req.method, JSON.stringify(req.url));
+    ("Requisição:", req.method, JSON.stringify(req.url));
     next();
   });
 
 const PORT = process.env.PORT || 500;
 app.listen(PORT, () => {
-  console.log(`✅ Server rodando na porta ${PORT}`);
+  console.log(`Server rodando na porta ${PORT}`);
 });
