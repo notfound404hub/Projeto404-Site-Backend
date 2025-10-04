@@ -50,7 +50,7 @@ r.post("/register", async (req, res) => {
     }
 
     await pool.query(
-      "INSERT INTO Usuario(Usuario_RA, Usuario_Nome,Usuario_Email,Usuario_Senha,Usuario_Cargo,Usuario_Telefone) VALUES (?, ?, ?, ?, ?, ?)",
+      "INSERT INTO USUARIO(Usuario_RA, Usuario_Nome,Usuario_Email,Usuario_Senha,Usuario_Cargo,Usuario_Telefone) VALUES (?, ?, ?, ?, ?, ?)",
       [Usuario_RA, Usuario_Nome, Usuario_Email, Usuario_Senha, Usuario_Cargo, Usuario_Telefone]
     );
 
@@ -123,5 +123,22 @@ r.put("/usuario/:ID_Usuario", async (req, res) => {
     res.status(500).json({ error: "Erro no servidor ao atualizar usuário" });
   }
 });
+
+r.get("/usuario", async (req, res) => {
+  try {
+    const [rows] = await pool.query("SELECT * FROM Usuario");
+
+    if (rows.length > 0) {
+      return res.json(rows); // ou res.json(rows) se quiser todos
+    } else {
+      return res.status(404).json({ error: "Usuário não encontrado" });
+    }
+    
+  } catch (err) {
+    console.error("Erro no SELECT:", err.sqlMessage || err.message);
+    return res.status(500).json({ error: "Erro no servidor ao buscar usuário" });
+  }
+});
+
 
 export default r;
