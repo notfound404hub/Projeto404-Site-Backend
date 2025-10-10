@@ -26,12 +26,12 @@ r.post("/login", async (req, res) => {
       return res.status(400).json({ error: "Senha incorreta" });
     }
 
-    // Pega o ID_Usuario do banco
+   
     const usuario = rows2[0]; 
 
     return res.status(200).json({ 
       msg: "Login bem sucedido",
-      ID_Usuario: usuario.ID_Usuario  // <-- Enviando o ID
+      ID_Usuario: usuario.ID_Usuario  
     });
   } catch (err) {
     console.error("Erro no login:", err);
@@ -124,21 +124,43 @@ r.put("/usuario/:ID_Usuario", async (req, res) => {
   }
 });
 
-r.get("/usuario", async (req, res) => {
+r.get("/usuarios", async (req, res) => {
   try {
     const [rows] = await pool.query("SELECT * FROM Usuario");
 
     if (rows.length > 0) {
-      return res.json(rows); // ou res.json(rows) se quiser todos
+      return res.json(rows); 
     } else {
-      return res.status(404).json({ error: "Usuário não encontrado" });
+      return res.status(404).json({ error: "Usuários não encontrados" });
     }
     
   } catch (err) {
     console.error("Erro no SELECT:", err.sqlMessage || err.message);
-    return res.status(500).json({ error: "Erro no servidor ao buscar usuário" });
+    return res.status(500).json({ error: "Erro no servidor ao buscar usuários" });
   }
 });
+
+// 📌 Excluir múltiplos usuários
+r.post("/delete", async (req, res) => {
+  try {
+    const { ids } = req.body;
+
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ error: "Nenhum usuário selecionado" });
+    }
+
+    // Gera placeholders (?) dinâmicos de acordo com a quantidade de IDs
+    const placeholders = ids.map(() => "?").join(",");
+
+    await pool.query(`DELETE FROM Usuario WHERE ID_Usuario IN (${placeholders})`, ids);
+
+    res.status(200).json({ msg: `Usuário(s) excluído(s) com sucesso!` });
+  } catch (err) {
+    console.error("Erro ao excluir usuários:", err);
+    res.status(500).json({ error: "Erro ao excluir usuários", details: err.message });
+  }
+});
+
 
 
 export default r;
