@@ -140,7 +140,6 @@ r.get("/usuarios", async (req, res) => {
   }
 });
 
-// 📌 Excluir múltiplos usuários
 r.post("/delete", async (req, res) => {
   try {
     const { ids } = req.body;
@@ -158,6 +157,41 @@ r.post("/delete", async (req, res) => {
   } catch (err) {
     console.error("Erro ao excluir usuários:", err);
     res.status(500).json({ error: "Erro ao excluir usuários", details: err.message });
+  }
+});
+
+r.put("/update", async (req, res) => {
+  try {
+    console.log("Requisição recebida para atualizar usuário");
+    console.log("Corpo da requisição:", req.body);
+
+    const { id, nome, email, telefone, empresa, senha } = req.body;
+
+    if (!id) {
+      console.log("ID do usuário não informado");
+      return res.status(400).json({ error: "ID do usuário é obrigatório" });
+    }
+
+    if (!nome || !email || !telefone || !empresa || !senha) {
+      console.log("Campos obrigatórios ausentes");
+      return res.status(400).json({ error: "Preencha todos os campos" });
+    }
+
+    console.log(
+      `Atualizando usuário ID: ${id} com nome: ${nome}, email: ${email}, telefone: ${telefone}, empresa: ${empresa}`
+    );
+
+    await pool.query(
+      "UPDATE Usuario SET Usuario_Nome = ?, Usuario_Email = ?, Usuario_Telefone = ?, Usuario_Empresa = ?, Usuario_Senha = ? WHERE ID_Usuario = ?",
+      [nome, email, telefone, empresa, senha, id] // ✅ ordem correta
+    );
+
+    console.log("Usuário atualizado com sucesso no banco de dados");
+    res.status(200).json({ msg: "Usuário atualizado com sucesso!" });
+
+  } catch (err) {
+    console.error("Erro ao atualizar usuário:", err);
+    res.status(500).json({ error: "Erro no servidor ao atualizar usuário" });
   }
 });
 
