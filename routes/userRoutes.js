@@ -40,9 +40,9 @@ r.post("/login", async (req, res) => {
 });
 
 
-r.post("/register", async (req, res) => {
+r.post("/alunos", async (req, res) => {
   try {
-    const { Usuario_RA, Usuario_Nome, Usuario_Email, Usuario_Senha, Usuario_Cargo, Usuario_Telefone } = req.body;
+    const { Usuario_RA, Usuario_Nome, Usuario_Email, Usuario_Senha } = req.body;
 
     const [rows] = await pool.query("SELECT * FROM Usuario WHERE Usuario_Email = ?", [Usuario_Email]);
     if (rows.length > 0) {
@@ -50,7 +50,7 @@ r.post("/register", async (req, res) => {
     }
 
     await pool.query(
-      "INSERT INTO USUARIO(Usuario_RA, Usuario_Nome,Usuario_Email,Usuario_Senha,Usuario_Cargo,Usuario_Telefone) VALUES (?, ?, ?, ?, ?, ?)",
+      "INSERT INTO USUARIO(Usuario_RA, Usuario_Nome,Usuario_Email,Usuario_Senha) VALUES (?, ?, ?, ?)",
       [Usuario_RA, Usuario_Nome, Usuario_Email, Usuario_Senha, Usuario_Cargo, Usuario_Telefone]
     );
 
@@ -59,6 +59,29 @@ r.post("/register", async (req, res) => {
   catch (err) {
     console.error("Erro no cadastro:", err); 
     res.status(500).json({ error: "Erro no cadastro", details: err.message });
+  } 
+
+})
+
+r.post("/mentores", async (req,res) => {
+  try{
+    const{Mentor_Nome, Mentor_Email, Mentor_Senha, Mentor_RA} = req.body
+
+    const[rows] = await pool.query("SELECT * FROM Mentor WHERE Mentor_Email = ?", [Mentor_Email])
+    if(rows.length>0){
+      return res.status(400).json({error:"Email já cadastrado"})
+    }
+
+    await pool.query(
+      "INSERT INTO Mentor(Mentor_Nome, Mentor_Email, Mentor_RA, Mentor_Senha) VALUES (?, ?, ?, ?)",
+      [Mentor_Nome, Mentor_Email, Mentor_RA, Mentor_Senha]
+    )
+    res.status(201).json({msg: "Mentor cadastrado com sucesso!"})
+  }
+  catch(err){
+    console.error("Erro no cadastro", err)
+    res.status(500).json({error: "Erro no cadastro", details: err.message})
+
   } 
 
 });
@@ -148,7 +171,6 @@ r.post("/delete", async (req, res) => {
       return res.status(400).json({ error: "Nenhum usuário selecionado" });
     }
 
-    // Gera placeholders (?) dinâmicos de acordo com a quantidade de IDs
     const placeholders = ids.map(() => "?").join(",");
 
     await pool.query(`DELETE FROM Usuario WHERE ID_Usuario IN (${placeholders})`, ids);
@@ -183,7 +205,7 @@ r.put("/update", async (req, res) => {
 
     await pool.query(
       "UPDATE Usuario SET Usuario_Nome = ?, Usuario_Email = ?, Usuario_Telefone = ?, Usuario_Empresa = ?, Usuario_Senha = ? WHERE ID_Usuario = ?",
-      [nome, email, telefone, empresa, senha, id] // ✅ ordem correta
+      [nome, email, telefone, empresa, senha, id]
     );
 
     console.log("Usuário atualizado com sucesso no banco de dados");
