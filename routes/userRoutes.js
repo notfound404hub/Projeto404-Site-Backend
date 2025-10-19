@@ -39,29 +39,32 @@ r.post("/login", async (req, res) => {
   }
 });
 
-
 r.post("/alunos", async (req, res) => {
+  console.log("Requisição recebida:", req.body);
   try {
-    const { Usuario_RA, Usuario_Nome, Usuario_Email, Usuario_Senha } = req.body;
-
-    const [rows] = await pool.query("SELECT * FROM Usuario WHERE Usuario_Email = ?", [Usuario_Email]);
-    if (rows.length > 0) {
-      return res.status(400).json({ error: "Email já cadastrado" });
+    const alunos = req.body
+    for(const aluno of alunos){      
+      const { Aluno_RA, Aluno_Nome, Aluno_Email, Aluno_Senha } = aluno;
+      
+      const [rows] = await pool.query("SELECT * FROM Aluno WHERE Aluno_Email = ?", [Aluno_Email]);
+      if (rows.length > 0) {
+        return res.status(400).json({ error: "Email já cadastrado" });
+      }
+      
+      await pool.query(
+        "INSERT INTO Aluno(Aluno_RA, Aluno_Nome, Aluno_Email, Aluno_Senha) VALUES (?, ?, ?, ?)",
+        [Aluno_RA, Aluno_Nome, Aluno_Email, Aluno_Senha]
+      );
     }
 
-    await pool.query(
-      "INSERT INTO USUARIO(Usuario_RA, Usuario_Nome,Usuario_Email,Usuario_Senha) VALUES (?, ?, ?, ?)",
-      [Usuario_RA, Usuario_Nome, Usuario_Email, Usuario_Senha, Usuario_Cargo, Usuario_Telefone]
-    );
-
-    res.status(201).json({ msg: "Usuário cadastrado com sucesso!" });
+    res.status(201).json({ msg: "Usuários cadastrados com sucesso!" });
   }
   catch (err) {
     console.error("Erro no cadastro:", err); 
     res.status(500).json({ error: "Erro no cadastro", details: err.message });
   } 
 
-})
+});
 
 r.post("/mentores", async (req,res) => {
   try{
@@ -69,7 +72,7 @@ r.post("/mentores", async (req,res) => {
 
     const[rows] = await pool.query("SELECT * FROM Mentor WHERE Mentor_Email = ?", [Mentor_Email])
     if(rows.length>0){
-      return res.status(400).json({error:"Email já cadastrado"})
+      return res.status(400).json({error: "Email já cadastrado"})
     }
 
     await pool.query(
