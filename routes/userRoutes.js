@@ -26,7 +26,6 @@ r.post("/login", async (req, res) => {
       return res.status(400).json({ error: "Senha incorreta" });
     }
 
-   
     const usuario = rows2[0]; 
 
     return res.status(200).json({ 
@@ -39,54 +38,61 @@ r.post("/login", async (req, res) => {
   }
 });
 
+r.post("/grupos", async (req,res) => {
+  console.log("Requisição recebida: ", req.body)
+  try{
+    const {Grupo_Nome, Grupo_Curso} = req.body
+
+    const[rows] = await pool.query(
+      "SELECT * FROM GRUPO WHERE Grupo_Nome = ?", [Grupo_Nome]
+    )
+    if(rows.length > 0){
+      return res.status(400).json({error: "Grupo já cadastrado"})
+    }
+    await pool.query("BEGIN")
+
+    await pool.query(
+      "INSERT INTO Grupo(Grupo_Nome, Grupo_Curso) VALUES (?, ?)", [Grupo_Nome, Grupo_Curso]
+    )
+    res.status(201).json("Grupo cadastrado com sucesso")
+    await pool.query("COMMIT")
+  }catch(err){
+    console.error("Erro no cadastro: ", err)
+    res.status(500).json({error:"Erro no cadastro do grupo", details: err.message})
+    await pool.query("ROLLBACK")
+
+  }  
+})
+
 r.post("/alunos", async (req, res) => {
   console.log("Requisição recebida:", req.body);
   try {
     const alunos = req.body
-    for(const aluno of alunos){      
-      const { Aluno_RA, Aluno_Nome, Aluno_Email, Aluno_Senha } = aluno;
+    for(const aluno of alunos){  
+      await pool.query("BEGIN")    
+      const { Aluno_RA, Aluno_Nome, Aluno_Email, Aluno_Senha, Id_Grupo} = aluno;
       
       const [rows] = await pool.query("SELECT * FROM Aluno WHERE Aluno_Email = ?", [Aluno_Email]);
       if (rows.length > 0) {
         return res.status(400).json({ error: "Email já cadastrado" });
-      }
+      }    
       
       await pool.query(
-        "INSERT INTO Aluno(Aluno_RA, Aluno_Nome, Aluno_Email, Aluno_Senha) VALUES (?, ?, ?, ?)",
-        [Aluno_RA, Aluno_Nome, Aluno_Email, Aluno_Senha]
+        "INSERT INTO Aluno(Aluno_RA, Aluno_Nome, Aluno_Email, Aluno_Senha, Id_Grupo) VALUES (?, ?, ?, ?, ?)",
+        [Aluno_RA, Aluno_Nome, Aluno_Email, Aluno_Senha, Id_Grupo]
       );
+
+      console.log("Aluno cadastrado", {aluno})
     }
 
     res.status(201).json({ msg: "Usuários cadastrados com sucesso!" });
+    await pool.query("COMMIT")
   }
   catch (err) {
     console.error("Erro no cadastro:", err); 
     res.status(500).json({ error: "Erro no cadastro", details: err.message });
-  } 
-
-});
-
-r.post("/mentores", async (req,res) => {
-  try{
-    const{Mentor_Nome, Mentor_Email, Mentor_Senha, Mentor_RA} = req.body
-
-    const[rows] = await pool.query("SELECT * FROM Mentor WHERE Mentor_Email = ?", [Mentor_Email])
-    if(rows.length>0){
-      return res.status(400).json({error: "Email já cadastrado"})
-    }
-
-    await pool.query(
-      "INSERT INTO Mentor(Mentor_Nome, Mentor_Email, Mentor_RA, Mentor_Senha) VALUES (?, ?, ?, ?)",
-      [Mentor_Nome, Mentor_Email, Mentor_RA, Mentor_Senha]
-    )
-    res.status(201).json({msg: "Mentor cadastrado com sucesso!"})
-  }
-  catch(err){
-    console.error("Erro no cadastro", err)
-    res.status(500).json({error: "Erro no cadastro", details: err.message})
-
-  } 
-
+    await pool.query("ROLLBACK")
+    } 
 });
 
 r.delete("/usuario/:ID_Usuario", async (req, res) => {
