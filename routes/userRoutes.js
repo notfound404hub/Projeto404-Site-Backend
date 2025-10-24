@@ -1,6 +1,9 @@
 import express from "express";
 import pool from "../db.js";
-
+import bcrypt from "bcrypt";
+import multer from "multer";
+import xlsx from "xlsx";
+const upload = multer({ dest: "uploads/" });
 console.log("userRoutes.js carregado");
 const r = express.Router();
 
@@ -26,8 +29,7 @@ r.post("/login", async (req, res) => {
       return res.status(400).json({ error: "Senha incorreta" });
     }
 
-   
-    const usuario = rows2[0]; 
+    const usuario = rows2[0];
 
     return res.status(200).json({
       msg: "Login bem sucedido",
@@ -39,82 +41,86 @@ r.post("/login", async (req, res) => {
   }
 });
 
-r.post("/grupos", async (req,res) => {
-  console.log("Requisição recebida: ", req.body)
-  try{
-    const {Grupo_Nome, Grupo_Curso} = req.body
+r.post("/grupos", async (req, res) => {
+  console.log("Requisição recebida: ", req.body);
+  try {
+    const { Grupo_Nome, Grupo_Curso } = req.body;
 
-    const[rows] = await pool.query(
-      "SELECT * FROM GRUPO WHERE Grupo_Nome = ?", [Grupo_Nome]
-    )
-    if(rows.length > 0){
-      return res.status(400).json({error: "Grupo já cadastrado"})
+    const [rows] = await pool.query(
+      "SELECT * FROM GRUPO WHERE Grupo_Nome = ?",
+      [Grupo_Nome]
+    );
+    if (rows.length > 0) {
+      return res.status(400).json({ error: "Grupo já cadastrado" });
     }
-    await pool.query("BEGIN")
+    await pool.query("BEGIN");
 
     await pool.query(
-      "INSERT INTO Grupo(Grupo_Nome, Grupo_Curso) VALUES (?, ?)", [Grupo_Nome, Grupo_Curso]
-    )
-    res.status(201).json("Grupo cadastrado com sucesso")
-    await pool.query("COMMIT")
-  }catch(err){
-    console.error("Erro no cadastro: ", err)
-    res.status(500).json({error:"Erro no cadastro do grupo", details: err.message})
-    await pool.query("ROLLBACK")
-
-  }  
-})
+      "INSERT INTO Grupo(Grupo_Nome, Grupo_Curso) VALUES (?, ?)",
+      [Grupo_Nome, Grupo_Curso]
+    );
+    res.status(201).json("Grupo cadastrado com sucesso");
+    await pool.query("COMMIT");
+  } catch (err) {
+    console.error("Erro no cadastro: ", err);
+    res
+      .status(500)
+      .json({ error: "Erro no cadastro do grupo", details: err.message });
+    await pool.query("ROLLBACK");
+  }
+});
 
 r.post("/alunos", async (req, res) => {
   console.log("Requisição recebida:", req.body);
   try {
-    const alunos = req.body
-    for(const aluno of alunos){      
+    const alunos = req.body;
+    for (const aluno of alunos) {
       const { Aluno_RA, Aluno_Nome, Aluno_Email, Aluno_Senha } = aluno;
-      
-      const [rows] = await pool.query("SELECT * FROM Aluno WHERE Aluno_Email = ?", [Aluno_Email]);
+
+      const [rows] = await pool.query(
+        "SELECT * FROM Aluno WHERE Aluno_Email = ?",
+        [Aluno_Email]
+      );
       if (rows.length > 0) {
         return res.status(400).json({ error: "Email já cadastrado" });
       }
-      
+
       await pool.query(
         "INSERT INTO Aluno(Aluno_RA, Aluno_Nome, Aluno_Email, Aluno_Senha, Id_Grupo) VALUES (?, ?, ?, ?, ?)",
         [Aluno_RA, Aluno_Nome, Aluno_Email, Aluno_Senha, Id_Grupo]
       );
 
-      console.log("Aluno cadastrado", {aluno})
+      console.log("Aluno cadastrado", { aluno });
     }
 
     res.status(201).json({ msg: "Usuários cadastrados com sucesso!" });
-  }
-  catch (err) {
-    console.error("Erro no cadastro:", err); 
+  } catch (err) {
+    console.error("Erro no cadastro:", err);
     res.status(500).json({ error: "Erro no cadastro", details: err.message });
-  } 
-
+  }
 });
 
-r.post("/mentores", async (req,res) => {
-  try{
-    const{Mentor_Nome, Mentor_Email, Mentor_Senha, Mentor_RA} = req.body
+r.post("/mentores", async (req, res) => {
+  try {
+    const { Mentor_Nome, Mentor_Email, Mentor_Senha, Mentor_RA } = req.body;
 
-    const[rows] = await pool.query("SELECT * FROM Mentor WHERE Mentor_Email = ?", [Mentor_Email])
-    if(rows.length>0){
-      return res.status(400).json({error: "Email já cadastrado"})
+    const [rows] = await pool.query(
+      "SELECT * FROM Mentor WHERE Mentor_Email = ?",
+      [Mentor_Email]
+    );
+    if (rows.length > 0) {
+      return res.status(400).json({ error: "Email já cadastrado" });
     }
 
     await pool.query(
       "INSERT INTO Mentor(Mentor_Nome, Mentor_Email, Mentor_RA, Mentor_Senha) VALUES (?, ?, ?, ?)",
       [Mentor_Nome, Mentor_Email, Mentor_RA, Mentor_Senha]
-    )
-    res.status(201).json({msg: "Mentor cadastrado com sucesso!"})
+    );
+    res.status(201).json({ msg: "Mentor cadastrado com sucesso!" });
+  } catch (err) {
+    console.error("Erro no cadastro", err);
+    res.status(500).json({ error: "Erro no cadastro", details: err.message });
   }
-  catch(err){
-    console.error("Erro no cadastro", err)
-    res.status(500).json({error: "Erro no cadastro", details: err.message})
-
-  } 
-
 });
 
 r.delete("/usuario/:ID_Usuario", async (req, res) => {
@@ -203,7 +209,6 @@ r.get("/usuarios", async (req, res) => {
     res.status(500).json({ error: "Erro no servidor ao buscar usuários" });
   }
 });
-
 
 r.post("/delete", async (req, res) => {
   try {
@@ -307,7 +312,9 @@ r.post("/filtrar", async (req, res) => {
       }
     });
 
-    const whereClause = conditions.length? `WHERE ${conditions.join(" AND ")}`: "";
+    const whereClause = conditions.length
+      ? `WHERE ${conditions.join(" AND ")}`
+      : "";
 
     const query = `SELECT * FROM Usuario ${whereClause}`;
     console.log(`SELECT * FROM Usuario${whereClause} `);
@@ -322,11 +329,13 @@ r.post("/filtrar", async (req, res) => {
 r.post("/ordenar", async (req, res) => {
   try {
     const { campo, direcao } = req.body;
-    console.log(campo)
-    console.log(direcao)
+    console.log(campo);
+    console.log(direcao);
     // validações básicas
     if (!campo) {
-      return res.status(400).json({ error: "Campo de ordenação não informado" });
+      return res
+        .status(400)
+        .json({ error: "Campo de ordenação não informado" });
     }
 
     let orderType = "ASC";
@@ -345,7 +354,7 @@ r.post("/ordenar", async (req, res) => {
       "created_at",
     ];
     console.log("Campo recebido:", campo);
-console.log("Colunas permitidas:", colunasPermitidas);
+    console.log("Colunas permitidas:", colunasPermitidas);
 
     if (!colunasPermitidas.includes(campo)) {
       return res.status(400).json({ error: "Campo de ordenação inválido" });
@@ -354,7 +363,7 @@ console.log("Colunas permitidas:", colunasPermitidas);
     const query = `SELECT * FROM Usuario ORDER BY ${campo} ${orderType}`;
     console.log(query);
     const [rows] = await pool.query(query);
-    console.log(direcao)
+    console.log(direcao);
     res.json(rows);
   } catch (error) {
     console.error("Erro ao ordenar usuários:", error);
@@ -367,12 +376,8 @@ r.put("/usuario/:ID_Usuario", async (req, res) => {
     console.log("📩 Requisição recebida para atualizar usuário.");
 
     const { ID_Usuario } = req.params;
-    const {
-      Usuario_Nome,
-      Usuario_Empresa,
-      Usuario_Telefone,
-      Usuario_Senha
-    } = req.body;
+    const { Usuario_Nome, Usuario_Empresa, Usuario_Telefone, Usuario_Senha } =
+      req.body;
 
     console.log("🧾 Dados recebidos no body:", req.body);
     console.log("🆔 ID recebido nos parâmetros:", ID_Usuario);
@@ -384,10 +389,12 @@ r.put("/usuario/:ID_Usuario", async (req, res) => {
 
     // 🚫 bloqueia alteração de campos protegidos
     if (req.body.Usuario_Email || req.body.Usuario_CPF || req.body.created_at) {
-      console.log("🚫 Tentativa de alterar campo protegido (Email, CPF ou created_at).");
-      return res
-        .status(400)
-        .json({ error: "Não é permitido alterar Email, CPF/CNPJ ou data de criação" });
+      console.log(
+        "🚫 Tentativa de alterar campo protegido (Email, CPF ou created_at)."
+      );
+      return res.status(400).json({
+        error: "Não é permitido alterar Email, CPF/CNPJ ou data de criação",
+      });
     }
 
     console.log("🛠️ Executando UPDATE no banco de dados...");
@@ -420,4 +427,189 @@ r.put("/usuario/:ID_Usuario", async (req, res) => {
 });
 
 
+
+
+r.post("/importarUsuarios", upload.single("file"), async (req, res) => {
+  console.log("📦 Recebendo requisição para importar usuários...");
+
+  if (!req.file) {
+    console.log("Nenhum arquivo recebido!");
+    return res.status(400).json({ error: "Nenhum arquivo enviado." });
+  }
+
+  console.log(" Arquivo recebido:", req.file.originalname);
+
+  try {
+    const workbook = xlsx.readFile(req.file.path);
+    const sheetName = workbook.SheetNames[0];
+    const dados = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName]);
+
+    console.log(`📊 ${dados.length} registros lidos do Excel.`);
+
+    if (dados.length === 0) {
+      return res.status(400).json({ error: "Planilha vazia ou inválida." });
+    }
+
+    const connection = await pool.getConnection();
+    const inseridos = [];
+    const atualizados = [];
+    const ignorados = [];
+
+    try {
+      await connection.beginTransaction();
+
+      for (const u of dados) {
+        const {
+          Usuario_Nome,
+          Usuario_CPF,
+          Usuario_Empresa,
+          Usuario_Email,
+          Usuario_Telefone,
+          Usuario_Senha,
+        } = u;
+
+        if (!Usuario_Email) {
+          console.log("⚠️ Ignorando linha sem e-mail:", u);
+          continue;
+        }
+
+        // 🔎 Busca o registro atual no banco
+        const [rows] = await connection.query(
+          "SELECT * FROM Usuario WHERE Usuario_Email = ?",
+          [Usuario_Email]
+        );
+
+        if (rows.length > 0) {
+          const atual = rows[0];
+          // 🧮 Verifica se há diferença entre o registro atual e o Excel
+          const mudou =
+            atual.Usuario_Nome !== Usuario_Nome ||
+            atual.Usuario_CPF !== Usuario_CPF ||
+            atual.Usuario_Empresa !== Usuario_Empresa ||
+            atual.Usuario_Telefone !== Usuario_Telefone ||
+            atual.Usuario_Senha !== Usuario_Senha;
+
+          if (mudou) {
+            console.log(`✏️ Atualizando usuário alterado: ${Usuario_Email}`);
+            await connection.query(
+              `UPDATE Usuario
+               SET Usuario_Nome = ?, Usuario_CPF = ?, Usuario_Empresa = ?, Usuario_Telefone = ?, Usuario_Senha = ?
+               WHERE Usuario_Email = ?`,
+              [
+                Usuario_Nome || null,
+                Usuario_CPF || null,
+                Usuario_Empresa || null,
+                Usuario_Telefone || null,
+                Usuario_Senha || null,
+                Usuario_Email,
+              ]
+            );
+            atualizados.push(Usuario_Email);
+          } else {
+            console.log(`⚪ Nenhuma mudança detectada em: ${Usuario_Email}`);
+            ignorados.push(Usuario_Email);
+          }
+        } else {
+          console.log(`🆕 Inserindo novo usuário: ${Usuario_Email}`);
+          await connection.query(
+            `INSERT INTO Usuario 
+             (Usuario_Nome, Usuario_CPF, Usuario_Empresa, Usuario_Email, Usuario_Telefone, Usuario_Senha)
+             VALUES (?, ?, ?, ?, ?, ?)`,
+            [
+              Usuario_Nome || null,
+              Usuario_CPF || null,
+              Usuario_Empresa || null,
+              Usuario_Email,
+              Usuario_Telefone || null,
+              Usuario_Senha || null,
+            ]
+          );
+          inseridos.push(Usuario_Email);
+        }
+      }
+
+      await connection.commit();
+
+      console.log("✅ Importação concluída!");
+      console.log("📥 Inseridos:", inseridos);
+      console.log("✏️ Atualizados:", atualizados);
+      console.log("⚪ Ignorados (sem mudança):", ignorados);
+
+      res.json({
+        msg: `Importação concluída! (${inseridos.length} novos, ${atualizados.length} atualizados, ${ignorados.length} sem mudança)`,
+        inseridos,
+        atualizados,
+        ignorados,
+      });
+    } catch (err) {
+      await connection.rollback();
+      console.error("💥 Erro durante importação:", err);
+      res.status(500).json({ error: "Erro ao importar usuários." });
+    } finally {
+      connection.release();
+    }
+  } catch (err) {
+    console.error("💥 Erro ao processar arquivo Excel:", err);
+    res.status(500).json({ error: "Erro ao processar arquivo Excel." });
+  }
+});
+
+
+r.post("/cadastroUsuario", async (req, res) => {
+  try {
+    const { nome, empresa, cpfCnpj, email, telefone, senha, tabela } = req.body;
+    const hashed = await bcrypt.hash(senha, 10)
+    // Validação básica
+    if (!nome || !email || !senha) {
+      return res.status(400).json({ 
+        error: "Nome, email e senha são obrigatórios" 
+      });
+    }
+
+    // Verifica se o email já está cadastrado
+    const [emailExists] = await pool.query(
+      "SELECT * FROM Usuario WHERE Usuario_Email = ?",
+      [email]
+    );
+
+    if (emailExists.length > 0) {
+      return res.status(400).json({ 
+        error: "Este email já está cadastrado" 
+      });
+    }
+
+    // Verifica se CPF/CNPJ já está cadastrado (se informado)
+    if (cpfCnpj) {
+      const [cpfExists] = await pool.query(
+        "SELECT * FROM Usuario WHERE Usuario_CPF = ?",
+        [cpfCnpj]
+      );
+
+      if (cpfExists.length > 0) {
+        return res.status(400).json({ 
+          error: "Este CPF/CNPJ já está cadastrado" 
+        });
+      }
+    }
+
+    
+
+    // Insere o novo usuário
+    const [result] = await pool.query(
+      `INSERT INTO Usuario
+      (Usuario_Nome, Usuario_Empresa, Usuario_CPF, Usuario_Email, Usuario_Telefone, Usuario_Senha) 
+      VALUES (?, ?, ?, ?, ?, ?)`,
+      [nome, empresa || null, cpfCnpj || null, email, telefone || null, hashed]
+    );
+
+    return res.status(201).json({
+      msg: "Usuário cadastrado com sucesso",
+      ID_Usuario: result.insertId
+    });
+
+  } catch (err) {
+    console.error("Erro no cadastro:", err);
+    res.status(500).json({ error: "Erro no servidor ao cadastrar usuário" });
+  }
+});
 export default r;
