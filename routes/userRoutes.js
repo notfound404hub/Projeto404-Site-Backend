@@ -5,7 +5,6 @@ import multer from "multer";
 import xlsx from "xlsx";
 const upload = multer({ dest: "uploads/" });
 
-import bcrypt from "bcrypt"   
 
 
 console.log("userRoutes.js carregado");
