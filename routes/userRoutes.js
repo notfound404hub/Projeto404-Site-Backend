@@ -80,37 +80,14 @@ r.post("/grupos", async (req, res) => {
       .json({ error: "Erro no cadastro do grupo", details: err.message });
     await pool.query("ROLLBACK");
   }
-});
-
-    const [result] = await pool.query(
-      "INSERT INTO Grupo(Grupo_Nome, Grupo_Curso) VALUES (?, ?)", [Grupo_Nome, Grupo_Curso]
-    )
-
-    res.status(201).json({msg: "Grupo cadastrado com sucesso", id: result.insertId})
-    await pool.query("COMMIT")
-  }catch(err){
-    console.error("Erro no cadastro: ", err)
-    res.status(500).json({error:"Erro no cadastro do grupo", details: err.message})
-    await pool.query("ROLLBACK")
-
-  }  
-})
-
+  });
 
 r.post("/alunos", async (req, res) => {
   console.log("Requisição recebida:", req.body);
   try {
 
     const alunos = req.body;
-    for (const aluno of alunos) {
-      const { Aluno_RA, Aluno_Nome, Aluno_Email, Aluno_Senha } = aluno;
-
-      const [rows] = await pool.query(
-        "SELECT * FROM Aluno WHERE Aluno_Email = ?",
-        [Aluno_Email]
-      );
-
-    const alunos = req.body
+    
 
     for(const aluno of alunos){      
       const { Aluno_RA, Aluno_Nome, Aluno_Email, Aluno_Senha, Id_Grupo } = aluno;
@@ -129,7 +106,7 @@ r.post("/alunos", async (req, res) => {
 
       console.log("Aluno cadastrado", { aluno });
     }
-
+  
     res.status(201).json({ msg: "Usuários cadastrados com sucesso!" });
   } catch (err) {
     console.error("Erro no cadastro:", err);
