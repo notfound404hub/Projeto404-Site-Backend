@@ -1,6 +1,5 @@
 import express from "express";
 import pool from "../db.js";
-
 import bcrypt from "bcrypt";
 import multer from "multer";
 import xlsx from "xlsx";
@@ -199,10 +198,9 @@ r.put("/usuarioPrincipal/:ID_Usuario", async (req, res) => {
   }
 });
 
-// 📍 Buscar todos os usuários ou um específico por ID
 r.get("/usuarios", async (req, res) => {
   try {
-    const { id } = req.query; // permite /usuarios?id=3
+    const { id } = req.query; 
     let query = "SELECT * FROM Usuario";
 
     if (id) {
@@ -292,7 +290,6 @@ r.post("/filtrar", async (req, res) => {
       return res.json(rows);
     }
 
-    // montar condições dinâmicas
     const conditions = [];
     const values = [];
 
@@ -345,7 +342,6 @@ r.post("/ordenar", async (req, res) => {
     const { campo, direcao } = req.body;
     console.log(campo);
     console.log(direcao);
-    // validações básicas
     if (!campo) {
       return res
         .status(400)
@@ -357,7 +353,6 @@ r.post("/ordenar", async (req, res) => {
       orderType = "DESC";
     }
 
-    // 🔒 segurança: impedir SQL injection via interpolação de coluna
     const colunasPermitidas = [
       "ID_Usuario",
       "Usuario_Nome",
@@ -387,31 +382,29 @@ r.post("/ordenar", async (req, res) => {
 
 r.put("/usuario/:ID_Usuario", async (req, res) => {
   try {
-    console.log("📩 Requisição recebida para atualizar usuário.");
+    console.log("Requisição recebida para atualizar usuário.");
 
     const { ID_Usuario } = req.params;
     const { Usuario_Nome, Usuario_Empresa, Usuario_Telefone, Usuario_Senha } =
       req.body;
 
-    console.log("🧾 Dados recebidos no body:", req.body);
-    console.log("🆔 ID recebido nos parâmetros:", ID_Usuario);
+    console.log("Dados recebidos no body:", req.body);
+    console.log("ID recebido nos parâmetros:", ID_Usuario);
 
     if (!ID_Usuario) {
-      console.log("❌ ID do usuário não informado.");
+      console.log("ID do usuário não informado.");
       return res.status(400).json({ error: "ID do usuário não informado" });
     }
-
-    // 🚫 bloqueia alteração de campos protegidos
     if (req.body.Usuario_Email || req.body.Usuario_CPF || req.body.created_at) {
       console.log(
-        "🚫 Tentativa de alterar campo protegido (Email, CPF ou created_at)."
+        "Tentativa de alterar campo protegido (Email, CPF ou created_at)."
       );
       return res.status(400).json({
         error: "Não é permitido alterar Email, CPF/CNPJ ou data de criação",
       });
     }
 
-    console.log("🛠️ Executando UPDATE no banco de dados...");
+    console.log("Executando UPDATE no banco de dados...");
 
     const [result] = await pool.query(
       `UPDATE Usuario 
@@ -430,12 +423,12 @@ r.put("/usuario/:ID_Usuario", async (req, res) => {
       ]
     );
 
-    console.log("✅ Query executada com sucesso!");
+    console.log("Query executada com sucesso!");
     console.log(" Resultado do MySQL:", result);
 
     res.status(200).json({ msg: "Usuário atualizado com sucesso!" });
   } catch (err) {
-    console.error("💥 Erro no UPDATE:", err.sqlMessage || err.message);
+    console.error("Erro no UPDATE:", err.sqlMessage || err.message);
     res.status(500).json({ error: "Erro no servidor ao atualizar usuário" });
   }
 });
@@ -444,7 +437,7 @@ r.put("/usuario/:ID_Usuario", async (req, res) => {
 
 
 r.post("/importarUsuarios", upload.single("file"), async (req, res) => {
-  console.log("📦 Recebendo requisição para importar usuários...");
+  console.log("Recebendo requisição para importar usuários...");
 
   if (!req.file) {
     console.log("Nenhum arquivo recebido!");
@@ -458,7 +451,7 @@ r.post("/importarUsuarios", upload.single("file"), async (req, res) => {
     const sheetName = workbook.SheetNames[0];
     const dados = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName]);
 
-    console.log(`📊 ${dados.length} registros lidos do Excel.`);
+    console.log(`${dados.length} registros lidos do Excel.`);
 
     if (dados.length === 0) {
       return res.status(400).json({ error: "Planilha vazia ou inválida." });
@@ -487,7 +480,6 @@ r.post("/importarUsuarios", upload.single("file"), async (req, res) => {
           continue;
         }
 
-        // 🔎 Busca o registro atual no banco
         const [rows] = await connection.query(
           "SELECT * FROM Usuario WHERE Usuario_Email = ?",
           [Usuario_Email]
@@ -495,7 +487,6 @@ r.post("/importarUsuarios", upload.single("file"), async (req, res) => {
 
         if (rows.length > 0) {
           const atual = rows[0];
-          // 🧮 Verifica se há diferença entre o registro atual e o Excel
           const mudou =
             atual.Usuario_Nome !== Usuario_Nome ||
             atual.Usuario_CPF !== Usuario_CPF ||
@@ -520,11 +511,11 @@ r.post("/importarUsuarios", upload.single("file"), async (req, res) => {
             );
             atualizados.push(Usuario_Email);
           } else {
-            console.log(`⚪ Nenhuma mudança detectada em: ${Usuario_Email}`);
+            console.log(`Nenhuma mudança detectada em: ${Usuario_Email}`);
             ignorados.push(Usuario_Email);
           }
         } else {
-          console.log(`🆕 Inserindo novo usuário: ${Usuario_Email}`);
+          console.log(`Inserindo novo usuário: ${Usuario_Email}`);
           await connection.query(
             `INSERT INTO Usuario 
              (Usuario_Nome, Usuario_CPF, Usuario_Empresa, Usuario_Email, Usuario_Telefone, Usuario_Senha)
@@ -544,10 +535,10 @@ r.post("/importarUsuarios", upload.single("file"), async (req, res) => {
 
       await connection.commit();
 
-      console.log("✅ Importação concluída!");
-      console.log("📥 Inseridos:", inseridos);
-      console.log("✏️ Atualizados:", atualizados);
-      console.log("⚪ Ignorados (sem mudança):", ignorados);
+      console.log("Importação concluída!");
+      console.log("Inseridos:", inseridos);
+      console.log("Atualizados:", atualizados);
+      console.log("Ignorados (sem mudança):", ignorados);
 
       res.json({
         msg: `Importação concluída! (${inseridos.length} novos, ${atualizados.length} atualizados, ${ignorados.length} sem mudança)`,
@@ -557,13 +548,13 @@ r.post("/importarUsuarios", upload.single("file"), async (req, res) => {
       });
     } catch (err) {
       await connection.rollback();
-      console.error("💥 Erro durante importação:", err);
+      console.error("Erro durante importação:", err);
       res.status(500).json({ error: "Erro ao importar usuários." });
     } finally {
       connection.release();
     }
   } catch (err) {
-    console.error("💥 Erro ao processar arquivo Excel:", err);
+    console.error("Erro ao processar arquivo Excel:", err);
     res.status(500).json({ error: "Erro ao processar arquivo Excel." });
   }
 });
@@ -573,14 +564,13 @@ r.post("/cadastroUsuario", async (req, res) => {
   try {
     const { nome, empresa, cpfCnpj, email, telefone, senha, tabela } = req.body;
     const hashed = await bcrypt.hash(senha, 10)
-    // Validação básica
+
     if (!nome || !email || !senha) {
       return res.status(400).json({ 
         error: "Nome, email e senha são obrigatórios" 
       });
     }
 
-    // Verifica se o email já está cadastrado
     const [emailExists] = await pool.query(
       "SELECT * FROM Usuario WHERE Usuario_Email = ?",
       [email]
@@ -592,7 +582,6 @@ r.post("/cadastroUsuario", async (req, res) => {
       });
     }
 
-    // Verifica se CPF/CNPJ já está cadastrado (se informado)
     if (cpfCnpj) {
       const [cpfExists] = await pool.query(
         "SELECT * FROM Usuario WHERE Usuario_CPF = ?",
@@ -604,9 +593,7 @@ r.post("/cadastroUsuario", async (req, res) => {
           error: "Este CPF/CNPJ já está cadastrado" 
         });
       }
-    }
-
-    
+    }    
 
     // Insere o novo usuário
     const [result] = await pool.query(
