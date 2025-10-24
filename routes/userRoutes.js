@@ -1,41 +1,34 @@
 import express from "express";
 import pool from "../db.js";
+import bcrypt from "bcrypt"   
 
 console.log("userRoutes.js carregado");
 const r = express.Router();
 
 r.post("/login", async (req, res) => {
   try {
-    const { Usuario_Email, Usuario_Senha } = req.body;
+    const { Aluno_Email, Aluno_Senha } = req.body;
+    console.log(Aluno_Email, Aluno_Senha)
 
     const [rows] = await pool.query(
-      "SELECT * FROM Usuario WHERE Usuario_Email = ?",
-      [Usuario_Email]
-    );
+      "SELECT * FROM Aluno WHERE Aluno_Email = ?",
+      [Aluno_Email])
 
     if (rows.length === 0) {
       return res.status(400).json({ error: "Email não cadastrado" });
     }
 
-    const [rows2] = await pool.query(
-      "SELECT * FROM Usuario WHERE Usuario_Email = ? AND Usuario_Senha = ?",
-      [Usuario_Email, Usuario_Senha]
-    );
-
-    if (rows2.length === 0) {
-      return res.status(400).json({ error: "Senha incorreta" });
-    }
-
-   
-    const usuario = rows2[0]; 
+    const user = rows[0]
+    const ok = await bcrypt.compare(Aluno_Senha, user.Aluno_Senha)
+    if(!ok) return res.status(401).json({error:"Credenciais inválidas", details:err.message})  
 
     return res.status(200).json({
       msg: "Login bem sucedido",
-      ID_Usuario: usuario.ID_Usuario,
+      ID_Aluno: user.ID_Aluno,
     });
   } catch (err) {
-    console.error("Erro no login:", err);
-    res.status(500).json({ error: "Erro no login" });
+    console.error({error:"Erro no login:", details: err.message});
+    res.status(500).json({ error: "Erro no login", details: err.message});
   }
 });
 
@@ -52,10 +45,11 @@ r.post("/grupos", async (req,res) => {
     }
     await pool.query("BEGIN")
 
-    await pool.query(
+    const [result] = await pool.query(
       "INSERT INTO Grupo(Grupo_Nome, Grupo_Curso) VALUES (?, ?)", [Grupo_Nome, Grupo_Curso]
     )
-    res.status(201).json("Grupo cadastrado com sucesso")
+
+    res.status(201).json({msg: "Grupo cadastrado com sucesso", id: result.insertId})
     await pool.query("COMMIT")
   }catch(err){
     console.error("Erro no cadastro: ", err)
@@ -69,8 +63,10 @@ r.post("/alunos", async (req, res) => {
   console.log("Requisição recebida:", req.body);
   try {
     const alunos = req.body
+
     for(const aluno of alunos){      
-      const { Aluno_RA, Aluno_Nome, Aluno_Email, Aluno_Senha } = aluno;
+      const { Aluno_RA, Aluno_Nome, Aluno_Email, Aluno_Senha, Id_Grupo } = aluno;
+      const hashed = await bcrypt.hash(Aluno_Senha, 10)
       
       const [rows] = await pool.query("SELECT * FROM Aluno WHERE Aluno_Email = ?", [Aluno_Email]);
       if (rows.length > 0) {
@@ -79,7 +75,7 @@ r.post("/alunos", async (req, res) => {
       
       await pool.query(
         "INSERT INTO Aluno(Aluno_RA, Aluno_Nome, Aluno_Email, Aluno_Senha, Id_Grupo) VALUES (?, ?, ?, ?, ?)",
-        [Aluno_RA, Aluno_Nome, Aluno_Email, Aluno_Senha, Id_Grupo]
+        [Aluno_RA, Aluno_Nome, Aluno_Email, hashed, Id_Grupo]
       );
 
       console.log("Aluno cadastrado", {aluno})
