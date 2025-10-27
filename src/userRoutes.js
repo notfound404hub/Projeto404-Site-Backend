@@ -1,5 +1,5 @@
 import express from "express";
-import pool from "../db.js";
+import pool from "./db.js";
 import bcrypt from "bcrypt";
 import multer from "multer";
 import xlsx from "xlsx";
@@ -289,7 +289,7 @@ r.post("/filtrar", async (req, res) => {
       const [rows] = await pool.query("SELECT * FROM Usuario");
       return res.json(rows);
     }
-
+    
     const conditions = [];
     const values = [];
 
