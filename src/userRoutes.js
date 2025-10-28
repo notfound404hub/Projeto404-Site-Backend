@@ -3,6 +3,7 @@ import pool from "./db.js";
 import bcrypt from "bcrypt";
 import multer from "multer";
 import xlsx from "xlsx";
+import { errorMonitor } from "nodemailer/lib/xoauth2/index.js";
 
 const upload = multer({ dest: "uploads/" });
 
@@ -125,6 +126,26 @@ r.post("/mentores", async (req, res) => {
     res.status(500).json({ error: "Erro no cadastro", details: err.message });
   }
 });
+
+r.post("/forgot-password", async (req, res) => {
+  
+  const{Aluno_Email,newPassword} = req.body
+
+  if(!Aluno_Email || !newPassword){
+    return res.status(400).json({error:"Envie email e senha"})
+  }
+ 
+  try{
+    const hashed = await bcrypt.hash(newPassword, 10)
+    await db.query("UPDATE Aluno SET Aluno_Senha = ? WHERE Aluno_Email = ?",
+      [hashed, Aluno_Email]
+    )
+    return res.json({message: "Se o email existir, a senha foi redefinida"})
+  }catch(err){
+    console.error("forgotPassword error", err)
+    return res.status(500).json({error: "Erro ao redefinir a senha"})
+  }  
+})
 
 r.delete("/usuario/:ID_Usuario", async (req, res) => {
   try {
