@@ -606,50 +606,106 @@ r.post("/cadastroUsuario", async (req, res) => {
   }
 });
 
-/* ============================================================
-   🔹 ROTAS DE MENSAGENS (Chat)
-   ============================================================ */
-
-// Buscar todas as conversas de um usuário
-r.get("/api/messages/:userId", async (req, res) => {
-  const { userId } = req.params;
+r.get("/api/messages/conversa/:user1/:user2", async (req, res) => {
+  const { user1, user2 } = req.params;
+  console.log("📩 [GET] Rota /api/messages/conversa chamada");
+  console.log("➡️ Params recebidos:", { user1, user2 });
 
   try {
-    const [rows] = await pool.query(
-      `SELECT * FROM Mensagem 
-       WHERE idRemetente = ? OR idDestinatario = ?
-       ORDER BY createdAt ASC`,
-      [userId, userId]
+    const [conversaRows] = await pool.query(
+      `SELECT c.idConversa
+       FROM Conversas c
+       JOIN ParticipantesConversa p1 ON c.idConversa = p1.idConversa
+       JOIN ParticipantesConversa p2 ON c.idConversa = p2.idConversa
+       WHERE p1.idAluno = ? AND p2.idAluno = ?`,
+      [user1, user2]
     );
 
+    console.log("🔍 Conversa encontrada:", conversaRows);
+
+    if (conversaRows.length === 0) {
+      console.log("⚠️ Nenhuma conversa encontrada entre os usuários");
+      return res.json([]);
+    }
+
+    const idConversa = conversaRows[0].idConversa;
+    console.log("🗂️ idConversa:", idConversa);
+
+    const [rows] = await pool.query(
+      `SELECT * FROM Mensagens
+       WHERE idConversa = ?
+       ORDER BY createdAt ASC`,
+      [idConversa]
+    );
+
+    console.log(`💬 ${rows.length} mensagens encontradas`);
     res.json(rows);
   } catch (err) {
-    console.error("❌ Erro ao buscar mensagens:", err);
-    res.status(500).json({ error: "Erro ao buscar mensagens" });
+    console.error("❌ Erro ao buscar conversa:", err);
+    res.status(500).json({ error: "Erro ao buscar conversa" });
   }
 });
 
-// Enviar nova mensagem
+// 🔹 Enviar nova mensagem
 r.post("/api/messages", async (req, res) => {
   const { idRemetente, idDestinatario, mensagem } = req.body;
+  console.log("📤 [POST] /api/messages chamada");
+  console.log("➡️ Body recebido:", { idRemetente, idDestinatario, mensagem });
 
   try {
-    const [result] = await pool.query(
-      `INSERT INTO Mensagem (idRemetente, idDestinatario, mensagem, createdAt)
-       VALUES (?, ?, ?, NOW())`,
-      [idRemetente, idDestinatario, mensagem]
+    const [conversaRows] = await pool.query(
+      `SELECT c.idConversa
+       FROM Conversas c
+       JOIN ParticipantesConversa p1 ON c.idConversa = p1.idConversa
+       JOIN ParticipantesConversa p2 ON c.idConversa = p2.idConversa
+       WHERE p1.idAluno = ? AND p2.idAluno = ?`,
+      [idRemetente, idDestinatario]
     );
+
+    console.log("🔍 Conversa existente:", conversaRows);
+
+    let idConversa;
+    if (conversaRows.length > 0) {
+      idConversa = conversaRows[0].idConversa;
+      console.log("✅ Conversa já existente:", idConversa);
+    } else {
+      console.log("🆕 Criando nova conversa...");
+      const [novaConversa] = await pool.query(
+        `INSERT INTO Conversas (createdAt) VALUES (NOW())`
+      );
+      idConversa = novaConversa.insertId;
+      console.log("🆔 Nova conversa criada:", idConversa);
+
+      await pool.query(
+        `INSERT INTO ParticipantesConversa (idConversa, idAluno)
+         VALUES (?, ?), (?, ?)`,
+        [idConversa, idRemetente, idConversa, idDestinatario]
+      );
+      console.log("👥 Participantes inseridos com sucesso");
+    }
+
+    const [result] = await pool.query(
+      `INSERT INTO Mensagens (idConversa, idRemetente, mensagem, createdAt)
+       VALUES (?, ?, ?, NOW())`,
+      [idConversa, idRemetente, mensagem]
+    );
+
+    console.log("💾 Mensagem salva com sucesso:", result);
 
     const novaMensagem = {
       idMensagem: result.insertId,
+      idConversa,
       idRemetente,
-      idDestinatario,
       mensagem,
       createdAt: new Date(),
     };
 
-    // Envia em tempo real via socket.io (io vem do req, injetado no server.js)
-    req.io.emit("receivedMessage", novaMensagem);
+    if (req.io) {
+      req.io.emit("receivedMessage", novaMensagem);
+      console.log("📡 Mensagem emitida via socket:", novaMensagem);
+    } else {
+      console.log("⚠️ req.io não definido (sem socket ativo)");
+    }
 
     res.status(201).json(novaMensagem);
   } catch (err) {
@@ -658,20 +714,20 @@ r.post("/api/messages", async (req, res) => {
   }
 });
 
-// Editar mensagem
+// 🔹 Editar mensagem
 r.put("/api/messages/:id", async (req, res) => {
   const { id } = req.params;
   const { mensagem } = req.body;
+  console.log("✏️ [PUT] Editando mensagem:", id, "->", mensagem);
 
   try {
-    await pool.query(`UPDATE Mensagem SET mensagem = ? WHERE idMensagem = ?`, [
+    await pool.query(`UPDATE Mensagens SET mensagem = ? WHERE idMensagem = ?`, [
       mensagem,
       id,
     ]);
+    console.log("✅ Mensagem atualizada com sucesso");
 
-    // Emite atualização em tempo real
-    req.io.emit("editedMessage", { idMensagem: id, mensagem });
-
+    if (req.io) req.io.emit("editedMessage", { idMensagem: id, mensagem });
     res.json({ success: true });
   } catch (err) {
     console.error("❌ Erro ao editar mensagem:", err);
@@ -679,16 +735,16 @@ r.put("/api/messages/:id", async (req, res) => {
   }
 });
 
-// Deletar mensagem
+// 🔹 Deletar mensagem
 r.delete("/api/messages/:id", async (req, res) => {
   const { id } = req.params;
+  console.log("🗑️ [DELETE] Deletando mensagem:", id);
 
   try {
-    await pool.query(`DELETE FROM Mensagem WHERE idMensagem = ?`, [id]);
+    await pool.query(`DELETE FROM Mensagens WHERE idMensagem = ?`, [id]);
+    console.log("✅ Mensagem deletada com sucesso");
 
-    // Emite evento de exclusão em tempo real
-    req.io.emit("deletedMessage", { idMensagem: id });
-
+    if (req.io) req.io.emit("deletedMessage", { idMensagem: id });
     res.json({ success: true });
   } catch (err) {
     console.error("❌ Erro ao deletar mensagem:", err);
