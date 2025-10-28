@@ -3,9 +3,8 @@ import pool from "./db.js";
 import bcrypt from "bcrypt";
 import multer from "multer";
 import xlsx from "xlsx";
+
 const upload = multer({ dest: "uploads/" });
-
-
 
 console.log("userRoutes.js carregado");
 const r = express.Router();
@@ -13,42 +12,36 @@ const r = express.Router();
 r.post("/login", async (req, res) => {
   try {
     const { Aluno_Email, Aluno_Senha } = req.body;
-    console.log(Aluno_Email, Aluno_Senha)
+    console.log(Aluno_Email, Aluno_Senha);
 
     const [rows] = await pool.query(
       "SELECT * FROM Aluno WHERE Aluno_Email = ?",
-      [Aluno_Email])
+      [Aluno_Email]
+    );
 
     if (rows.length === 0) {
       return res.status(400).json({ error: "Email não cadastrado" });
     }
 
+    const user = rows[0];
+    const ok = await bcrypt.compare(Aluno_Senha, user.Aluno_Senha);
 
-    const [rows2] = await pool.query(
-      "SELECT * FROM Usuario WHERE Usuario_Email = ? AND Usuario_Senha = ?",
-      [Usuario_Email, Usuario_Senha]
-    );
-
-    if (rows2.length === 0) {
-      return res.status(400).json({ error: "Senha incorreta" });
+    if (!ok) {
+      return res.status(401).json({ error: "Credenciais inválidas" });
     }
-
-    const usuario = rows2[0];
-
-    const user = rows[0]
-    const ok = await bcrypt.compare(Aluno_Senha, user.Aluno_Senha)
-    if(!ok) return res.status(401).json({error:"Credenciais inválidas", details:err.message})  
-
 
     return res.status(200).json({
       msg: "Login bem sucedido",
       ID_Aluno: user.ID_Aluno,
+      Aluno_Nome: user.Aluno_Nome,
+      Aluno_Email: user.Aluno_Email
     });
   } catch (err) {
-    console.error({error:"Erro no login:", details: err.message});
-    res.status(500).json({ error: "Erro no login", details: err.message});
+    console.error("Erro no login:", err.message);
+    res.status(500).json({ error: "Erro no login", details: err.message });
   }
 });
+
 
 r.post("/grupos", async (req, res) => {
   console.log("Requisição recebida: ", req.body);
@@ -612,4 +605,95 @@ r.post("/cadastroUsuario", async (req, res) => {
     res.status(500).json({ error: "Erro no servidor ao cadastrar usuário" });
   }
 });
+
+/* ============================================================
+   🔹 ROTAS DE MENSAGENS (Chat)
+   ============================================================ */
+
+// Buscar todas as conversas de um usuário
+r.get("/api/messages/:userId", async (req, res) => {
+  const { userId } = req.params;
+
+  try {
+    const [rows] = await pool.query(
+      `SELECT * FROM Mensagem 
+       WHERE idRemetente = ? OR idDestinatario = ?
+       ORDER BY createdAt ASC`,
+      [userId, userId]
+    );
+
+    res.json(rows);
+  } catch (err) {
+    console.error("❌ Erro ao buscar mensagens:", err);
+    res.status(500).json({ error: "Erro ao buscar mensagens" });
+  }
+});
+
+// Enviar nova mensagem
+r.post("/api/messages", async (req, res) => {
+  const { idRemetente, idDestinatario, mensagem } = req.body;
+
+  try {
+    const [result] = await pool.query(
+      `INSERT INTO Mensagem (idRemetente, idDestinatario, mensagem, createdAt)
+       VALUES (?, ?, ?, NOW())`,
+      [idRemetente, idDestinatario, mensagem]
+    );
+
+    const novaMensagem = {
+      idMensagem: result.insertId,
+      idRemetente,
+      idDestinatario,
+      mensagem,
+      createdAt: new Date(),
+    };
+
+    // Envia em tempo real via socket.io (io vem do req, injetado no server.js)
+    req.io.emit("receivedMessage", novaMensagem);
+
+    res.status(201).json(novaMensagem);
+  } catch (err) {
+    console.error("❌ Erro ao enviar mensagem:", err);
+    res.status(500).json({ error: "Erro ao enviar mensagem" });
+  }
+});
+
+// Editar mensagem
+r.put("/api/messages/:id", async (req, res) => {
+  const { id } = req.params;
+  const { mensagem } = req.body;
+
+  try {
+    await pool.query(`UPDATE Mensagem SET mensagem = ? WHERE idMensagem = ?`, [
+      mensagem,
+      id,
+    ]);
+
+    // Emite atualização em tempo real
+    req.io.emit("editedMessage", { idMensagem: id, mensagem });
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("❌ Erro ao editar mensagem:", err);
+    res.status(500).json({ error: "Erro ao editar mensagem" });
+  }
+});
+
+// Deletar mensagem
+r.delete("/api/messages/:id", async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    await pool.query(`DELETE FROM Mensagem WHERE idMensagem = ?`, [id]);
+
+    // Emite evento de exclusão em tempo real
+    req.io.emit("deletedMessage", { idMensagem: id });
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("❌ Erro ao deletar mensagem:", err);
+    res.status(500).json({ error: "Erro ao deletar mensagem" });
+  }
+});
+
 export default r;

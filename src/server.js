@@ -1,23 +1,42 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import userRoutes from "../routes/userRoutes.js";
+import { createServer } from "http";
+import { Server } from "socket.io";
+import userRoutes from "./userRoutes.js";
 
 dotenv.config();
 
 const app = express();
+const server = createServer(app);
+
+const io = new Server(server, {
+  cors: { origin: "*" },
+});
 
 app.use(cors());
 app.use(express.json());
 
+// 🔹 Injeta o io em todas as rotas (para req.io funcionar)
+app.use((req, res, next) => {
+  req.io = io;
+  next();
+});
+
 app.use("/api/users", userRoutes);
 
 app.use((req, res, next) => {
-    ("Requisição:", req.method, JSON.stringify(req.url));
-    next();
+  console.log("Requisição:", req.method, req.url);
+  next();
+});
+
+io.on("connection", (socket) => {
+  console.log("🟢 Novo cliente conectado:", socket.id);
+
+  socket.on("disconnect", () => {
+    console.log("🔴 Cliente desconectado:", socket.id);
   });
+});
 
 const PORT = process.env.PORT || 500;
-app.listen(PORT, () => {
-  console.log(`Server rodando na porta ${PORT}`);
-});
+server.listen(PORT, () => console.log(`✅ Server rodando na porta ${PORT}`));
