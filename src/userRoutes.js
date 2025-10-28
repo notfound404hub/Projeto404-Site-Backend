@@ -16,24 +16,13 @@ r.post("/login", async (req, res) => {
     console.log(Aluno_Email, Aluno_Senha)
 
     const [rows] = await pool.query(
-      "SELECT * FROM Aluno WHERE Aluno_Email = ?",
-      [Aluno_Email])
-
-    if (rows.length === 0) {
-      return res.status(400).json({ error: "Email não cadastrado" });
-    }
-
-
-    const [rows2] = await pool.query(
       "SELECT * FROM Usuario WHERE Usuario_Email = ? AND Usuario_Senha = ?",
       [Usuario_Email, Usuario_Senha]
     );
 
-    if (rows2.length === 0) {
-      return res.status(400).json({ error: "Senha incorreta" });
+    if (rows.length === 0) {
+      return res.status(400).json({ error: "E-Mail ou senha Senha incorretos" });
     }
-
-    const usuario = rows2[0];
 
     const user = rows[0]
     const ok = await bcrypt.compare(Aluno_Senha, user.Aluno_Senha)
