@@ -15,20 +15,18 @@ r.post("/login", async (req, res) => {
     console.log(Aluno_Email, Aluno_Senha);
 
     const [rows] = await pool.query(
-      "SELECT * FROM Aluno WHERE Aluno_Email = ?",
-      [Aluno_Email]
+      "SELECT * FROM Usuario WHERE Usuario_Email = ? AND Usuario_Senha = ?",
+      [Usuario_Email, Usuario_Senha]
     );
 
     if (rows.length === 0) {
-      return res.status(400).json({ error: "Email não cadastrado" });
+      return res.status(400).json({ error: "E-Mail ou senha Senha incorretos" });
     }
 
-    const user = rows[0];
-    const ok = await bcrypt.compare(Aluno_Senha, user.Aluno_Senha);
+    const user = rows[0]
+    const ok = await bcrypt.compare(Aluno_Senha, user.Aluno_Senha)
+    if(!ok) return res.status(401).json({error:"Credenciais inválidas", details:err.message})  
 
-    if (!ok) {
-      return res.status(401).json({ error: "Credenciais inválidas" });
-    }
 
     return res.status(200).json({
       msg: "Login bem sucedido",
