@@ -3,7 +3,6 @@ import pool from "./db.js";
 import bcrypt from "bcrypt";
 import multer from "multer";
 import xlsx from "xlsx";
-import { errorMonitor } from "nodemailer/lib/xoauth2/index.js";
 
 const upload = multer({ dest: "uploads/" });
 
