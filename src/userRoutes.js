@@ -3,11 +3,12 @@ import pool from "./db.js";
 import bcrypt from "bcrypt";
 import multer from "multer";
 import xlsx from "xlsx";
+import {createToken, denyToken} from "../services/tokenService.js"
 import { errorMonitor } from "nodemailer/lib/xoauth2/index.js";
 
-const upload = multer({ dest: "uploads/" });
-
 console.log("userRoutes.js carregado");
+
+const upload = multer({ dest: "uploads/" });
 const r = express.Router();
 
 r.post("/login", async (req, res) => {
@@ -65,9 +66,7 @@ r.post("/grupos", async (req, res) => {
     await pool.query("COMMIT");
   } catch (err) {
     console.error("Erro no cadastro: ", err);
-    res
-      .status(500)
-      .json({ error: "Erro no cadastro do grupo", details: err.message });
+    res.status(500).json({ error: "Erro no cadastro do grupo", details: err.message });
     await pool.query("ROLLBACK");
   }
   });
@@ -192,22 +191,22 @@ r.get("/usuario/:ID_Usuario", async (req, res) => {
   }
 });
 
-r.put("/usuarioPrincipal/:ID_Usuario", async (req, res) => {
-  try {
-    const { ID_Usuario } = req.params;
-    const { Usuario_Email, Usuario_Senha, Usuario_Cargo } = req.body;
+// r.put("/usuarioPrincipal/:ID_Usuario", async (req, res) => {
+//   try {
+//     const { ID_Usuario } = req.params;
+//     const { Usuario_Email, Usuario_Senha, Usuario_Cargo } = req.body;
 
-    await pool.query(
-      "UPDATE Usuario SET Usuario_Email=?, Usuario_Senha=?, Usuario_Cargo=? WHERE ID_Usuario=?",
-      [Usuario_Email, Usuario_Senha, Usuario_Cargo, ID_Usuario]
-    );
+//     await pool.query(
+//       "UPDATE Usuario SET Usuario_Email=?, Usuario_Senha=?, Usuario_Cargo=? WHERE ID_Usuario=?",
+//       [Usuario_Email, Usuario_Senha, Usuario_Cargo, ID_Usuario]
+//     );
 
-    return res.status(200).json({ msg: "Usuário atualizado com sucesso" });
-  } catch (err) {
-    console.error("Erro no UPDATE:", err.sqlMessage || err.message);
-    res.status(500).json({ error: "Erro no servidor ao atualizar usuário" });
-  }
-});
+//     return res.status(200).json({ msg: "Usuário atualizado com sucesso" });
+//   } catch (err) {
+//     console.error("Erro no UPDATE:", err.sqlMessage || err.message);
+//     res.status(500).json({ error: "Erro no servidor ao atualizar usuário" });
+//   }
+// });
 
 r.get("/usuarios", async (req, res) => {
   try {
@@ -233,7 +232,7 @@ r.get("/usuarios", async (req, res) => {
   }
 });
 
-r.post("/delete", async (req, res) => {
+r.delete("/deleteFromTable", async (req, res) => {
   try {
     const { ids } = req.body;
 
@@ -257,45 +256,44 @@ r.post("/delete", async (req, res) => {
   }
 });
 
-r.put("/update", async (req, res) => {
-  try {
-    console.log("Requisição recebida para atualizar usuário");
-    console.log("Corpo da requisição:", req.body);
+// r.put("/update", async (req, res) => {
+//   try {
+//     console.log("Requisição recebida para atualizar usuário");
+//     console.log("Corpo da requisição:", req.body);
 
-    const { id, nome, email, telefone, empresa, senha } = req.body;
+//     const { id, nome, email, telefone, empresa, senha } = req.body;
 
-    if (!id) {
-      console.log("ID do usuário não informado");
-      return res.status(400).json({ error: "ID do usuário é obrigatório" });
-    }
+//     if (!id) {
+//       console.log("ID do usuário não informado");
+//       return res.status(400).json({ error: "ID do usuário é obrigatório" });
+//     }
 
-    if (!nome || !email || !telefone || !empresa || !senha) {
-      console.log("Campos obrigatórios ausentes");
-      return res.status(400).json({ error: "Preencha todos os campos" });
-    }
+//     if (!nome || !email || !telefone || !empresa || !senha) {
+//       console.log("Campos obrigatórios ausentes");
+//       return res.status(400).json({ error: "Preencha todos os campos" });
+//     }
 
-    console.log(
-      `Atualizando usuário ID: ${id} com nome: ${nome}, email: ${email}, telefone: ${telefone}, empresa: ${empresa}`
-    );
+//     console.log(
+//       `Atualizando usuário ID: ${id} com nome: ${nome}, email: ${email}, telefone: ${telefone}, empresa: ${empresa}`
+//     );
 
-    await pool.query(
-      "UPDATE Usuario SET Usuario_Nome = ?, Usuario_Email = ?, Usuario_Telefone = ?, Usuario_Empresa = ?, Usuario_Senha = ? WHERE ID_Usuario = ?",
-      [nome, email, telefone, empresa, senha, id]
-    );
+//     await pool.query(
+//       "UPDATE Usuario SET Usuario_Nome = ?, Usuario_Email = ?, Usuario_Telefone = ?, Usuario_Empresa = ?, Usuario_Senha = ? WHERE ID_Usuario = ?",
+//       [nome, email, telefone, empresa, senha, id]
+//     );
 
-    console.log("Usuário atualizado com sucesso no banco de dados");
-    res.status(200).json({ msg: "Usuário atualizado com sucesso!" });
-  } catch (err) {
-    console.error("Erro ao atualizar usuário:", err);
-    res.status(500).json({ error: "Erro no servidor ao atualizar usuário" });
-  }
-});
+//     console.log("Usuário atualizado com sucesso no banco de dados");
+//     res.status(200).json({ msg: "Usuário atualizado com sucesso!" });
+//   } catch (err) {
+//     console.error("Erro ao atualizar usuário:", err);
+//     res.status(500).json({ error: "Erro no servidor ao atualizar usuário" });
+//   }
+// });
 
 r.post("/filtrar", async (req, res) => {
   try {
     const { filtros } = req.body;
     console.log(filtros);
-    // se não tiver filtros, retorna tudo
     if (!filtros || !Array.isArray(filtros) || filtros.length === 0) {
       const [rows] = await pool.query("SELECT * FROM Usuario");
       return res.json(rows);
@@ -444,9 +442,6 @@ r.put("/usuario/:ID_Usuario", async (req, res) => {
   }
 });
 
-
-
-
 r.post("/importarUsuarios", upload.single("file"), async (req, res) => {
   console.log("Recebendo requisição para importar usuários...");
 
@@ -487,7 +482,7 @@ r.post("/importarUsuarios", upload.single("file"), async (req, res) => {
         } = u;
 
         if (!Usuario_Email) {
-          console.log("⚠️ Ignorando linha sem e-mail:", u);
+          console.log("Ignorando linha sem e-mail:", u);
           continue;
         }
 
@@ -506,7 +501,7 @@ r.post("/importarUsuarios", upload.single("file"), async (req, res) => {
             atual.Usuario_Senha !== Usuario_Senha;
 
           if (mudou) {
-            console.log(`✏️ Atualizando usuário alterado: ${Usuario_Email}`);
+            console.log(`Atualizando usuário alterado: ${Usuario_Email}`);
             await connection.query(
               `UPDATE Usuario
                SET Usuario_Nome = ?, Usuario_CPF = ?, Usuario_Empresa = ?, Usuario_Telefone = ?, Usuario_Senha = ?
@@ -606,7 +601,6 @@ r.post("/cadastroUsuario", async (req, res) => {
       }
     }    
 
-    // Insere o novo usuário
     const [result] = await pool.query(
       `INSERT INTO Usuario
       (Usuario_Nome, Usuario_Empresa, Usuario_CPF, Usuario_Email, Usuario_Telefone, Usuario_Senha) 
@@ -629,8 +623,7 @@ r.post("/cadastroUsuario", async (req, res) => {
    🔹 ROTAS DE MENSAGENS (Chat)
    ============================================================ */
 
-// Buscar todas as conversas de um usuário
-r.get("/api/messages/:userId", async (req, res) => {
+r.get("/messages/:userId", async (req, res) => {
   const { userId } = req.params;
 
   try {
@@ -643,13 +636,12 @@ r.get("/api/messages/:userId", async (req, res) => {
 
     res.json(rows);
   } catch (err) {
-    console.error("❌ Erro ao buscar mensagens:", err);
+    console.error("Erro ao buscar mensagens:", err);
     res.status(500).json({ error: "Erro ao buscar mensagens" });
   }
 });
 
-// Enviar nova mensagem
-r.post("/api/messages", async (req, res) => {
+r.post("/messages", async (req, res) => {
   const { idRemetente, idDestinatario, mensagem } = req.body;
 
   try {
@@ -667,18 +659,16 @@ r.post("/api/messages", async (req, res) => {
       createdAt: new Date(),
     };
 
-    // Envia em tempo real via socket.io (io vem do req, injetado no server.js)
     req.io.emit("receivedMessage", novaMensagem);
 
     res.status(201).json(novaMensagem);
   } catch (err) {
-    console.error("❌ Erro ao enviar mensagem:", err);
+    console.error("Erro ao enviar mensagem:", err);
     res.status(500).json({ error: "Erro ao enviar mensagem" });
   }
 });
 
-// Editar mensagem
-r.put("/api/messages/:id", async (req, res) => {
+r.put("/messages/:id", async (req, res) => {
   const { id } = req.params;
   const { mensagem } = req.body;
 
@@ -688,29 +678,26 @@ r.put("/api/messages/:id", async (req, res) => {
       id,
     ]);
 
-    // Emite atualização em tempo real
     req.io.emit("editedMessage", { idMensagem: id, mensagem });
 
     res.json({ success: true });
   } catch (err) {
-    console.error("❌ Erro ao editar mensagem:", err);
+    console.error("Erro ao editar mensagem:", err);
     res.status(500).json({ error: "Erro ao editar mensagem" });
   }
 });
 
-// Deletar mensagem
-r.delete("/api/messages/:id", async (req, res) => {
+r.delete("/messages/:id", async (req, res) => {
   const { id } = req.params;
 
-  try {
-    await pool.query(`DELETE FROM Mensagem WHERE idMensagem = ?`, [id]);
+  try {    await pool.query(`DELETE FROM Mensagem WHERE idMensagem = ?`, [id]);
 
-    // Emite evento de exclusão em tempo real
+
     req.io.emit("deletedMessage", { idMensagem: id });
 
     res.json({ success: true });
   } catch (err) {
-    console.error("❌ Erro ao deletar mensagem:", err);
+    console.error("Erro ao deletar mensagem:", err);
     res.status(500).json({ error: "Erro ao deletar mensagem" });
   }
 });

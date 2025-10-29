@@ -17,7 +17,6 @@ const io = new Server(server, {
 app.use(cors());
 app.use(express.json());
 
-// 🔹 Injeta o io em todas as rotas (para req.io funcionar)
 app.use((req, res, next) => {
   req.io = io;
   next();
