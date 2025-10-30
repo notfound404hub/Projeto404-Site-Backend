@@ -3,8 +3,7 @@ import pool from "./db.js";
 import bcrypt from "bcrypt";
 import multer from "multer";
 import xlsx from "xlsx";
-import {createToken, denyToken} from "../services/tokenService.js"
-import { errorMonitor } from "nodemailer/lib/xoauth2/index.js";
+import {createToken, denyToken} from "./services/tokenService.js"
 
 console.log("userRoutes.js carregado");
 
@@ -139,7 +138,7 @@ r.post("/forgot-password", async (req, res) => {
     await db.query("UPDATE Aluno SET Aluno_Senha = ? WHERE Aluno_Email = ?",
       [hashed, Aluno_Email]
     )
-    return res.json({message: "Se o email existir, a senha foi redefinida"})
+    return res.status(201).json({message: "Se o email existir, a senha foi redefinida"})
   }catch(err){
     console.error("forgotPassword error", err)
     return res.status(500).json({error: "Erro ao redefinir a senha"})
