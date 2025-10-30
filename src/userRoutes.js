@@ -4,10 +4,69 @@ import bcrypt from "bcrypt";
 import multer from "multer";
 import xlsx from "xlsx";
 
+import { createToken, denyToken } from "./services/tokenService.js";
+
+console.log("userRoutes.js carregado");
+
+
 const upload = multer({ dest: "uploads/" });
 
 console.log("userRoutes.js carregado");
 const r = express.Router();
+
+r.post("/delete", async (req, res) => {
+  try {
+    const { ids, tabela } = req.body;
+
+    console.log("IDs recebidos:", ids);
+    console.log("Tabela recebida:", tabela);
+
+    // Validações
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return res
+        .status(400)
+        .json({ error: "Nenhum ID informado para exclusão." });
+    }
+
+    if (!tabela) {
+      return res
+        .status(400)
+        .json({ error: "Nome da tabela não informado." });
+    }
+
+    // Segurança: impede SQL injection via nome de tabela
+    const tabelasPermitidas = ["Usuario", "Campanha", "Mentor", "Aluno"]; // adicione as que quiser
+    if (!tabelasPermitidas.includes(tabela)) {
+      return res
+        .status(400)
+        .json({ error: "Tabela não permitida para exclusão." });
+    }
+
+    console.log(`🗑 Excluindo da tabela: ${tabela}, IDs:`, ids);
+
+    // Monta placeholders (?, ?, ?) dinamicamente
+    const placeholders = ids.map(() => "?").join(", ");
+
+    // Usa interpolação segura apenas no nome da tabela (já validado)
+    const query = `DELETE FROM ${tabela} WHERE ID_${tabela} IN (${placeholders})`;
+
+    const [result] = await pool.query(query, ids);
+
+    if (result.affectedRows === 0) {
+      return res
+        .status(404)
+        .json({ error: "Nenhum registro encontrado para exclusão." });
+    }
+
+    return res.status(200).json({
+      msg: `${result.affectedRows} registro(s) excluído(s) com sucesso!`,
+    });
+  } catch (err) {
+    console.error("Erro ao excluir itens:", err);
+    res.status(500).json({ error: "Erro no servidor ao excluir itens." });
+  }
+});
+
 
 r.post("/login", async (req, res) => {
   try {
@@ -20,7 +79,9 @@ r.post("/login", async (req, res) => {
     );
 
     if (rows.length === 0) {
-      return res.status(400).json({ error: "Email não cadastrado" });
+      return res
+        .status(400)
+        .json({ error: "E-Mail ou senha Senha incorretos" });
     }
 
     const user = rows[0];
@@ -30,18 +91,23 @@ r.post("/login", async (req, res) => {
       return res.status(401).json({ error: "Credenciais inválidas" });
     }
 
+    if (!ok)
+      return res
+        .status(401)
+        .json({ error: "Credenciais inválidas", details: err.message });
+
+
     return res.status(200).json({
       msg: "Login bem sucedido",
       ID_Aluno: user.ID_Aluno,
       Aluno_Nome: user.Aluno_Nome,
-      Aluno_Email: user.Aluno_Email
+      Aluno_Email: user.Aluno_Email,
     });
   } catch (err) {
     console.error("Erro no login:", err.message);
     res.status(500).json({ error: "Erro no login", details: err.message });
   }
 });
-
 
 r.post("/grupos", async (req, res) => {
   console.log("Requisição recebida: ", req.body);
@@ -57,7 +123,6 @@ r.post("/grupos", async (req, res) => {
     }
     await pool.query("BEGIN");
 
-
     await pool.query(
       "INSERT INTO Grupo(Grupo_Nome, Grupo_Curso) VALUES (?, ?)",
       [Grupo_Nome, Grupo_Curso]
@@ -71,20 +136,22 @@ r.post("/grupos", async (req, res) => {
       .json({ error: "Erro no cadastro do grupo", details: err.message });
     await pool.query("ROLLBACK");
   }
-  });
+});
 
 r.post("/alunos", async (req, res) => {
   console.log("Requisição recebida:", req.body);
   try {
-
     const alunos = req.body;
-    
 
-    for(const aluno of alunos){      
-      const { Aluno_RA, Aluno_Nome, Aluno_Email, Aluno_Senha, Id_Grupo } = aluno;
-      const hashed = await bcrypt.hash(Aluno_Senha, 10)
-      
-      const [rows] = await pool.query("SELECT * FROM Aluno WHERE Aluno_Email = ?", [Aluno_Email]);
+    for (const aluno of alunos) {
+      const { Aluno_RA, Aluno_Nome, Aluno_Email, Aluno_Senha, Id_Grupo } =
+        aluno;
+      const hashed = await bcrypt.hash(Aluno_Senha, 10);
+
+      const [rows] = await pool.query(
+        "SELECT * FROM Aluno WHERE Aluno_Email = ?",
+        [Aluno_Email]
+      );
 
       if (rows.length > 0) {
         return res.status(400).json({ error: "Email já cadastrado" });
@@ -97,7 +164,7 @@ r.post("/alunos", async (req, res) => {
 
       console.log("Aluno cadastrado", { aluno });
     }
-  
+
     res.status(201).json({ msg: "Usuários cadastrados com sucesso!" });
   } catch (err) {
     console.error("Erro no cadastro:", err);
@@ -130,25 +197,19 @@ r.post("/mentores", async (req, res) => {
 
 r.delete("/usuario/:ID_Usuario", async (req, res) => {
   try {
-    const { ID_Usuario } = req.params;
-
-    const [rows] = await pool.query(
-      "SELECT * FROM Usuario WHERE ID_Usuario = ?",
-      [ID_Usuario]
-    );
-
-    if (rows.length === 0) {
-      return res.status(404).json({ error: "Usuário não encontrado" });
-    }
-
-    await pool.query("DELETE FROM Usuario WHERE ID_Usuario = ?", [ID_Usuario]);
-
-    return res.status(200).json({ msg: "Conta deletada com sucesso" });
+    const hashed = await bcrypt.hash(newPassword, 10);
+    await db.query("UPDATE Aluno SET Aluno_Senha = ? WHERE Aluno_Email = ?", [
+      hashed,
+      Aluno_Email,
+    ]);
+    return res.json({ message: "Se o email existir, a senha foi redefinida" });
   } catch (err) {
-    console.error("Erro ao deletar conta:", err);
-    res.status(500).json({ error: "Erro no servidor ao deletar conta" });
+    console.error("forgotPassword error", err);
+    return res.status(500).json({ error: "Erro ao redefinir a senha" });
   }
 });
+
+
 
 r.get("/usuario/:ID_Usuario", async (req, res) => {
   const { ID_Usuario } = req.params;
@@ -190,23 +251,16 @@ r.put("/usuarioPrincipal/:ID_Usuario", async (req, res) => {
   }
 });
 
-r.get("/usuarios", async (req, res) => {
+r.post("/tabela", async (req, res) => {
+  const { teste } = req.body;
+  console.log(teste[1]);
   try {
-    const { id } = req.query; 
-    let query = "SELECT * FROM Usuario";
-
-    if (id) {
-      query += " WHERE ID_Usuario = ?";
-      const [rows] = await pool.query(query, [id]);
-
-      if (rows.length === 0) {
-        return res.status(404).json({ error: "Usuário não encontrado" });
-      }
-
-      return res.json(rows[0]);
-    }
+    const { id } = req.query;
+    let query = `SELECT * FROM ${teste}`;
+    console.log(query);
 
     const [rows] = await pool.query(query);
+
     res.json(rows);
   } catch (error) {
     console.error("Erro ao buscar usuários:", error);
@@ -274,14 +328,18 @@ r.put("/update", async (req, res) => {
 
 r.post("/filtrar", async (req, res) => {
   try {
-    const { filtros } = req.body;
+    const { filtros, tabela } = req.body;
     console.log(filtros);
+
     // se não tiver filtros, retorna tudo
+
+    console.log(tabela);
+
     if (!filtros || !Array.isArray(filtros) || filtros.length === 0) {
-      const [rows] = await pool.query("SELECT * FROM Usuario");
+      const [rows] = await pool.query(`SELECT * FROM ${tabela}`);
       return res.json(rows);
     }
-    
+
     const conditions = [];
     const values = [];
 
@@ -319,21 +377,23 @@ r.post("/filtrar", async (req, res) => {
       ? `WHERE ${conditions.join(" AND ")}`
       : "";
 
-    const query = `SELECT * FROM Usuario ${whereClause}`;
-    console.log(`SELECT * FROM Usuario${whereClause} `);
+    const query = `SELECT * FROM ${tabela} ${whereClause}`;
+    console.log(`SELECT * FROM ${tabela} ${whereClause} `);
     const [rows] = await pool.query(query, values);
     res.json(rows);
   } catch (error) {
-    console.error("Erro ao filtrar usuários:", error);
-    res.status(500).json({ error: "Erro ao filtrar usuários" });
+    console.error(`Erro ao filtrar ${tabela}:`, error);
+    res.status(500).json({ error: `Erro ao filtrar ${tabela}` });
   }
 });
 
 r.post("/ordenar", async (req, res) => {
   try {
-    const { campo, direcao } = req.body;
+    const { campo, direcao, tabela } = req.body;
     console.log(campo);
     console.log(direcao);
+    console.log(tabela);
+
     if (!campo) {
       return res
         .status(400)
@@ -345,30 +405,16 @@ r.post("/ordenar", async (req, res) => {
       orderType = "DESC";
     }
 
-    const colunasPermitidas = [
-      "ID_Usuario",
-      "Usuario_Nome",
-      "Usuario_CPF",
-      "Usuario_Empresa",
-      "Usuario_Email",
-      "Usuario_Telefone",
-      "created_at",
-    ];
     console.log("Campo recebido:", campo);
-    console.log("Colunas permitidas:", colunasPermitidas);
 
-    if (!colunasPermitidas.includes(campo)) {
-      return res.status(400).json({ error: "Campo de ordenação inválido" });
-    }
-
-    const query = `SELECT * FROM Usuario ORDER BY ${campo} ${orderType}`;
+    const query = `SELECT * FROM ${tabela} ORDER BY ${campo} ${orderType}`;
     console.log(query);
     const [rows] = await pool.query(query);
     console.log(direcao);
     res.json(rows);
   } catch (error) {
-    console.error("Erro ao ordenar usuários:", error);
-    res.status(500).json({ error: "Erro ao ordenar usuários" });
+    console.error(`Erro ao ordenar ${tabela}:`, error);
+    res.status(500).json({ error: `Erro ao ordenar ${tabela}` });
   }
 });
 
@@ -551,15 +597,14 @@ r.post("/importarUsuarios", upload.single("file"), async (req, res) => {
   }
 });
 
-
 r.post("/cadastroUsuario", async (req, res) => {
   try {
     const { nome, empresa, cpfCnpj, email, telefone, senha, tabela } = req.body;
-    const hashed = await bcrypt.hash(senha, 10)
+    const hashed = await bcrypt.hash(senha, 10);
 
     if (!nome || !email || !senha) {
-      return res.status(400).json({ 
-        error: "Nome, email e senha são obrigatórios" 
+      return res.status(400).json({
+        error: "Nome, email e senha são obrigatórios",
       });
     }
 
@@ -569,8 +614,8 @@ r.post("/cadastroUsuario", async (req, res) => {
     );
 
     if (emailExists.length > 0) {
-      return res.status(400).json({ 
-        error: "Este email já está cadastrado" 
+      return res.status(400).json({
+        error: "Este email já está cadastrado",
       });
     }
 
@@ -581,11 +626,11 @@ r.post("/cadastroUsuario", async (req, res) => {
       );
 
       if (cpfExists.length > 0) {
-        return res.status(400).json({ 
-          error: "Este CPF/CNPJ já está cadastrado" 
+        return res.status(400).json({
+          error: "Este CPF/CNPJ já está cadastrado",
         });
       }
-    }    
+    }
 
     // Insere o novo usuário
     const [result] = await pool.query(
@@ -597,14 +642,14 @@ r.post("/cadastroUsuario", async (req, res) => {
 
     return res.status(201).json({
       msg: "Usuário cadastrado com sucesso",
-      ID_Usuario: result.insertId
+      ID_Usuario: result.insertId,
     });
-
   } catch (err) {
     console.error("Erro no cadastro:", err);
     res.status(500).json({ error: "Erro no servidor ao cadastrar usuário" });
   }
 });
+
 
 r.get("/api/messages/conversa/:user1/:user2", async (req, res) => {
   const { user1, user2 } = req.params;
@@ -751,5 +796,7 @@ r.delete("/api/messages/:id", async (req, res) => {
     res.status(500).json({ error: "Erro ao deletar mensagem" });
   }
 });
+
+
 
 export default r;
