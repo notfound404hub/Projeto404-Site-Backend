@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt'
 import { createToken, denyToken } from '../services/tokenService.js'
 import { json } from 'express'
 import dotenv from "dotenv";
+import { Resend } from "resend";
 
 dotenv.config()
 
@@ -11,13 +12,65 @@ const sanitizeAluno = (u) => ({ alunoId: u.ID_Aluno, alunoNome: u.Aluno_Nome, al
 
 const sanitizeGrupo = (u) => ({ grupoId: ID_Grupo, grupoNome: u.Grupo_Nome, grupoCurso: u.Grupo_Curso})
 
-const transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+export const forgotPassword = async (req, res) => {
+    const { email } = req.body;
+    console.log("📩 Requisição recebida:", email);
+  
+    try {
+      const [rows] = await db.query(
+        "SELECT * FROM Aluno WHERE Aluno_Email = ?",
+        [email]
+      );
+  
+      if (!rows.length) {
+        console.log("⚠️ Nenhum usuário encontrado para:", email);
+        // Resposta genérica pra não expor se o e-mail existe
+        return res
+          .status(200)
+          .json({ message: "Email de recuperação enviado (caso exista)." });
+      }
+  
+      const user = rows[0];
+      const { token } = createToken(
+        { id: user.ID_Aluno },
+        { expiresIn: "15m" }
+      );
+  
+      const resetLink = `${process.env.FRONTEND_URL}/reset-password/${token}`;
+  
+      console.log("🔗 Link de reset:", resetLink);
+  
+      const { data, error } = await resend.emails.send({
+        from: process.env.EMAIL_USER, // teste, pode mudar depois
+        to: email,
+        subject: "Redefinição de senha",
+        html: `
+          <p>Olá, ${user.Aluno_Nome}!</p>
+          <p>Você solicitou a redefinição de senha. Clique no link abaixo:</p>
+          <a href="${resetLink}">${resetLink}</a>
+          <p>O link é válido por 15 minutos.</p>
+        `,
+      });
+  
+      // 👇 Novo: verificar retorno do Resend
+      if (error) {
+        console.error("❌ Erro ao enviar e-mail via Resend:", error);
+        return res.status(500).json({ error: "Falha ao enviar o e-mail." });
+      }
+  
+      console.log("✅ Email enviado com sucesso!", data);
+  
+      res.status(200).json({
+        message: "Email de recuperação enviado.",
+        info: data, // só pra debug, pode remover depois
+      });
+    } catch (err) {
+      console.error("💥 Erro interno:", err);
+      res.status(500).json({ error: "Erro interno do servidor." });
     }
-})
+  };
 
 export const login = async (req, res) => {
     const {email, senha} = req.body
@@ -85,41 +138,6 @@ export const grupos = async (req, res) => {
         res.status(500).json({error: "Error ao registrar grupo"})
         await db.query("ROLLBACK")
     }
-}
-
-export const forgotPassword = async (req, res) => {
-    const {email} = req.body
-    try{
-        const[rows] = await db.query("SELECT * FROM Aluno WHERE Aluno_Email = ?", [email])
-
-        let message = ""
-
-        if(rows.length){
-            const user = rows[0]
-            const {token} = createToken({id: user.alunoId}, process.env.JWT_SECRET, {expiresIn: "15m"})
-            const resetLink = `${process.env.FRONTEND_URL}/reset-password/${token}`;
-
-            await transporter.sendMail({
-                from: process.env.EMAIL_USER,
-                to:  email,
-                subject: "Redefinição de senha",
-                html: `<p>Olá, ${user.Aluno_Nome}!</p>
-                    <p>Você solicitou a redefinição de senha. Clique no link abaixo para criar uma nova senha:</p>
-                    <a href="${resetLink}">${resetLink}</a>
-                    <p>O link é válido por 15 minutos.</p>`   
-                               
-            })
-            message = "Email de recuperação enviado"
-            
-            }else{
-                message = "A mensagem não pode ser enviada"
-            }
-            
-        res.status(200).json({message})
-    }catch(err){
-        console.error(err)
-        res.status(500).json({error: "Erro interno do servidor"})
-    }     
 }
 
 export const resetPassword = async (req, res) => {

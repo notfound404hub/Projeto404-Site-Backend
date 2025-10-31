@@ -4,6 +4,8 @@ import bcrypt from "bcrypt";
 import multer from "multer";
 import xlsx from "xlsx";
 import {createToken, denyToken} from "./services/tokenService.js"
+import {forgotPassword} from
+'./controllers/authController.js'
 
 console.log("userRoutes.js carregado");
 
@@ -40,6 +42,9 @@ r.post("/login", async (req, res) => {
     res.status(500).json({ error: "Erro no login", details: err.message });
   }
 });
+
+r.post('/auth/forgotPassword', forgotPassword)
+
 
 
 r.post("/grupos", async (req, res) => {
