@@ -35,8 +35,9 @@ r.post("/delete", async (req, res) => {
     }
 
     // Segurança: impede SQL injection via nome de tabela
-    const tabelasPermitidas = ["Usuario", "Campanha", "Mentor", "Aluno"]; // adicione as que quiser
-    if (!tabelasPermitidas.includes(tabela)) {
+    const tabelasPermitidas = ["Campanha","Usuario", "Mentor", "Aluno"];
+    if (!tabelasPermitidas.includes(tabela.trim())) {
+      console.log(`A tabela é ${tabela}`)
       return res
         .status(400)
         .json({ error: "Tabela não permitida para exclusão." });
@@ -66,8 +67,6 @@ r.post("/delete", async (req, res) => {
     res.status(500).json({ error: "Erro no servidor ao excluir itens." });
   }
 });
-
-
 r.post("/login", async (req, res) => {
   try {
     const { Aluno_Email, Aluno_Senha } = req.body;
@@ -108,7 +107,6 @@ r.post("/login", async (req, res) => {
     res.status(500).json({ error: "Erro no login", details: err.message });
   }
 });
-
 r.post("/grupos", async (req, res) => {
   console.log("Requisição recebida: ", req.body);
   try {
@@ -137,7 +135,6 @@ r.post("/grupos", async (req, res) => {
     await pool.query("ROLLBACK");
   }
 });
-
 r.post("/alunos", async (req, res) => {
   console.log("Requisição recebida:", req.body);
   try {
@@ -171,7 +168,6 @@ r.post("/alunos", async (req, res) => {
     res.status(500).json({ error: "Erro no cadastro", details: err.message });
   }
 });
-
 r.post("/mentores", async (req, res) => {
   try {
     const { Mentor_Nome, Mentor_Email, Mentor_Senha, Mentor_RA } = req.body;
@@ -194,7 +190,6 @@ r.post("/mentores", async (req, res) => {
     res.status(500).json({ error: "Erro no cadastro", details: err.message });
   }
 });
-
 r.delete("/usuario/:ID_Usuario", async (req, res) => {
   try {
     const hashed = await bcrypt.hash(newPassword, 10);
@@ -208,9 +203,6 @@ r.delete("/usuario/:ID_Usuario", async (req, res) => {
     return res.status(500).json({ error: "Erro ao redefinir a senha" });
   }
 });
-
-
-
 r.get("/usuario/:ID_Usuario", async (req, res) => {
   const { ID_Usuario } = req.params;
   try {
@@ -233,7 +225,6 @@ r.get("/usuario/:ID_Usuario", async (req, res) => {
       .json({ error: "Erro no servidor ao buscar usuário" });
   }
 });
-
 r.put("/usuarioPrincipal/:ID_Usuario", async (req, res) => {
   try {
     const { ID_Usuario } = req.params;
@@ -250,7 +241,6 @@ r.put("/usuarioPrincipal/:ID_Usuario", async (req, res) => {
     res.status(500).json({ error: "Erro no servidor ao atualizar usuário" });
   }
 });
-
 r.post("/tabela", async (req, res) => {
   const { teste } = req.body;
   console.log(teste[1]);
@@ -267,7 +257,6 @@ r.post("/tabela", async (req, res) => {
     res.status(500).json({ error: "Erro no servidor ao buscar usuários" });
   }
 });
-
 r.post("/delete", async (req, res) => {
   try {
     const { ids } = req.body;
@@ -291,7 +280,6 @@ r.post("/delete", async (req, res) => {
       .json({ error: "Erro ao excluir usuários", details: err.message });
   }
 });
-
 r.put("/update", async (req, res) => {
   try {
     console.log("Requisição recebida para atualizar usuário");
@@ -325,7 +313,6 @@ r.put("/update", async (req, res) => {
     res.status(500).json({ error: "Erro no servidor ao atualizar usuário" });
   }
 });
-
 r.post("/filtrar", async (req, res) => {
   try {
     const { filtros, tabela } = req.body;
@@ -386,7 +373,6 @@ r.post("/filtrar", async (req, res) => {
     res.status(500).json({ error: `Erro ao filtrar ${tabela}` });
   }
 });
-
 r.post("/ordenar", async (req, res) => {
   try {
     const { campo, direcao, tabela } = req.body;
@@ -417,7 +403,6 @@ r.post("/ordenar", async (req, res) => {
     res.status(500).json({ error: `Erro ao ordenar ${tabela}` });
   }
 });
-
 r.put("/usuario/:ID_Usuario", async (req, res) => {
   try {
     console.log("Requisição recebida para atualizar usuário.");
@@ -470,39 +455,112 @@ r.put("/usuario/:ID_Usuario", async (req, res) => {
     res.status(500).json({ error: "Erro no servidor ao atualizar usuário" });
   }
 });
+r.get("/campanhas/:ID_Campanha", async (req, res) => {
+  const { ID_Campanha } = req.params;
+  try {
+    console.log("Buscando Campanha ID:", ID_Campanha);
 
+    const [rows] = await pool.query(
+      "SELECT * FROM Campanha WHERE ID_Campanha = ?",
+      [ID_Campanha]
+    );
 
+    if (rows.length > 0) {
+      return res.json(rows[0]);
+    } else {
+      return res.status(404).json({ error: "Campanha não encontrado" });
+    }
+  } catch (err) {
+    console.error("Erro no SELECT:", err.sqlMessage || err.message);
+    return res
+      .status(500)
+      .json({ error: "Erro no servidor ao buscar Campanha" });
+  }
+});
+r.put("/campanhas/:ID_Campanha", async (req, res) => {
+  try {
+    console.log("Requisição recebida para atualizar campanha.");
 
+    const { ID_Campanha } = req.params;
+    const {
+      Campanha_Nome,
+      Campanha_Local,
+      Campanha_Meta,
+      finish_at,
+      Campanha_Grupo,
+      Campanha_Quantidade,
+    } = req.body;
 
+    console.log("Body recebido:", req.body);
+    console.log("ID recebido:", ID_Campanha);
+
+    // Verificações básicas
+    if (!ID_Campanha) {
+      console.log("ID da campanha não informado.");
+      return res.status(400).json({ error: "ID da campanha não informado." });
+    }
+
+    // Bloqueia alteração de campos protegidos
+    if (Campanha_Grupo || Campanha_Quantidade) {
+      console.log("Tentativa de alterar campo protegido (Grupo ou Quantidade).");
+      return res.status(400).json({
+        error: "Não é permitido alterar o Grupo ou a Quantidade.",
+      });
+    }
+
+    console.log("Executando UPDATE no banco...");
+
+    const [result] = await pool.query(
+      `UPDATE Campanha
+       SET 
+         Campanha_Nome = ?,
+         Campanha_Local = ?,
+         Campanha_Meta = ?,
+        
+         finish_at = ?
+       WHERE ID_Campanha = ?`,
+      [
+        Campanha_Nome,
+        Campanha_Local,
+        Campanha_Meta,
+        finish_at,
+        ID_Campanha,
+      ]
+    );
+
+    if (result.affectedRows === 0) {
+      console.log("Nenhuma campanha encontrada para o ID informado.");
+      return res.status(404).json({ error: "Campanha não encontrada." });
+    }
+
+    console.log("Campanha atualizada com sucesso!");
+    res.status(200).json({ msg: "Campanha atualizada com sucesso!" });
+  } catch (err) {
+    console.error("Erro no UPDATE de campanha:", err.sqlMessage || err.message);
+    res.status(500).json({ error: "Erro no servidor ao atualizar campanha." });
+  }
+});
 r.post("/importarUsuarios", upload.single("file"), async (req, res) => {
   console.log("Recebendo requisição para importar usuários...");
-
   if (!req.file) {
     console.log("Nenhum arquivo recebido!");
     return res.status(400).json({ error: "Nenhum arquivo enviado." });
   }
-
   console.log(" Arquivo recebido:", req.file.originalname);
-
   try {
     const workbook = xlsx.readFile(req.file.path);
     const sheetName = workbook.SheetNames[0];
     const dados = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName]);
-
     console.log(`${dados.length} registros lidos do Excel.`);
-
     if (dados.length === 0) {
       return res.status(400).json({ error: "Planilha vazia ou inválida." });
     }
-
     const connection = await pool.getConnection();
     const inseridos = [];
     const atualizados = [];
     const ignorados = [];
-
     try {
       await connection.beginTransaction();
-
       for (const u of dados) {
         const {
           Usuario_Nome,
@@ -512,17 +570,14 @@ r.post("/importarUsuarios", upload.single("file"), async (req, res) => {
           Usuario_Telefone,
           Usuario_Senha,
         } = u;
-
         if (!Usuario_Email) {
           console.log("⚠️ Ignorando linha sem e-mail:", u);
           continue;
         }
-
         const [rows] = await connection.query(
           "SELECT * FROM Usuario WHERE Usuario_Email = ?",
           [Usuario_Email]
         );
-
         if (rows.length > 0) {
           const atual = rows[0];
           const mudou =
@@ -531,7 +586,6 @@ r.post("/importarUsuarios", upload.single("file"), async (req, res) => {
             atual.Usuario_Empresa !== Usuario_Empresa ||
             atual.Usuario_Telefone !== Usuario_Telefone ||
             atual.Usuario_Senha !== Usuario_Senha;
-
           if (mudou) {
             console.log(`✏️ Atualizando usuário alterado: ${Usuario_Email}`);
             await connection.query(
@@ -570,14 +624,11 @@ r.post("/importarUsuarios", upload.single("file"), async (req, res) => {
           inseridos.push(Usuario_Email);
         }
       }
-
       await connection.commit();
-
       console.log("Importação concluída!");
       console.log("Inseridos:", inseridos);
       console.log("Atualizados:", atualizados);
       console.log("Ignorados (sem mudança):", ignorados);
-
       res.json({
         msg: `Importação concluída! (${inseridos.length} novos, ${atualizados.length} atualizados, ${ignorados.length} sem mudança)`,
         inseridos,
@@ -596,6 +647,189 @@ r.post("/importarUsuarios", upload.single("file"), async (req, res) => {
     res.status(500).json({ error: "Erro ao processar arquivo Excel." });
   }
 });
+
+r.post("/importarCampanha", upload.single("file"), async (req, res) => {
+    if (!req.file) {
+    console.log(" Nenhum arquivo recebido!");
+    return res.status(400).json({ error: "Nenhum arquivo enviado." });
+  }
+
+  console.log(" Arquivo recebido:", req.file.originalname);
+
+  try {
+    const workbook = xlsx.readFile(req.file.path);
+    const sheetName = workbook.SheetNames[0];
+    const dados = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName]);
+    console.log(`${dados.length} registros lidos do Excel.`);
+
+    if (dados.length === 0) {
+      return res.status(400).json({ error: "Planilha vazia ou inválida." });
+    }
+
+    // helpers
+    const toNumberSafe = (v) => {
+      if (v === null || v === undefined || v === "") return null;
+      const n = Number(String(v).replace(",", "."));
+      return Number.isFinite(n) ? n : null;
+    };
+
+    const parseDateSafe = (v) => {
+      if (v === null || v === undefined || v === "") return null;
+      // v pode ser Excel date serial (número) ou string; Date consegue lidar de forma geral.
+      const d = new Date(v);
+      if (isNaN(d.getTime())) return null;
+      return d;
+    };
+
+    const formatSQLDateTime = (d) => {
+      if (!d) return null;
+      // retorna "YYYY-MM-DD HH:MM:SS"
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const dd = String(d.getDate()).padStart(2, "0");
+      const hh = String(d.getHours()).padStart(2, "0");
+      const mi = String(d.getMinutes()).padStart(2, "0");
+      const ss = String(d.getSeconds()).padStart(2, "0");
+      return `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`;
+    };
+
+    const connection = await pool.getConnection();
+    const inseridos = [];
+    const atualizados = [];
+    const ignorados = [];
+
+    try {
+      await connection.beginTransaction();
+
+      for (const row of dados) {
+        // normaliza nomes de colunas (se vierem com espaços ou minúsculas, adapte aqui)
+        const Campanha_Nome = row.Campanha_Nome || row["Campanha Nome"] || row.nome || null;
+        const Campanha_Local = row.Campanha_Local || row.Local || null;
+        const Campanha_Grupo = row.Campanha_Grupo || row.Grupo || null;
+        const Campanha_Meta = toNumberSafe(row.Campanha_Meta ?? row.Meta);
+        const Campanha_Quantidade = Number.isFinite(Number(row.Campanha_Quantidade))
+          ? parseInt(row.Campanha_Quantidade, 10)
+          : toNumberSafe(row.Campanha_Quantidade) || null;
+        const finish_at_raw = row.finish_at || row["Finish At"] || row["Acaba em"] || null;
+
+        if (!Campanha_Nome) {
+          console.log(" Ignorando linha sem nome de campanha:", row);
+          continue;
+        }
+
+        // busca existente
+        const [rows] = await connection.query(
+          "SELECT * FROM Campanha WHERE Campanha_Nome = ?",
+          [Campanha_Nome]
+        );
+
+        const newFinishDate = parseDateSafe(finish_at_raw);
+        const newFinishSQL = formatSQLDateTime(newFinishDate); // null ou string
+
+        if (rows.length > 0) {
+          const atual = rows[0];
+
+          // normaliza valores atuais vindos do DB
+          const atualLocal = atual.Campanha_Local ?? null;
+          const atualGrupo = atual.Campanha_Grupo ?? null;
+          const atualMeta = toNumberSafe(atual.Campanha_Meta);
+          const atualQuantidade = atual.Campanha_Quantidade != null ? Number(atual.Campanha_Quantidade) : null;
+          const atualFinishDate = atual.finish_at ? new Date(atual.finish_at) : null;
+
+          // compara robustamente:
+          const mudouLocal = (atualLocal || "") !== (Campanha_Local || "");
+          const mudouGrupo = (atualGrupo || "") !== (Campanha_Grupo || "");
+          const mudouMeta =
+            (atualMeta === null && Campanha_Meta !== null) ||
+            (atualMeta !== null && Campanha_Meta === null) ||
+            (atualMeta !== null && Campanha_Meta !== null && Number(atualMeta) !== Number(Campanha_Meta));
+          const mudouQuantidade =
+            (atualQuantidade === null && Campanha_Quantidade !== null) ||
+            (atualQuantidade !== null && Campanha_Quantidade === null) ||
+            (atualQuantidade !== null && Campanha_Quantidade !== null && Number(atualQuantidade) !== Number(Campanha_Quantidade));
+
+          let mudouFinish = false;
+          if (atualFinishDate === null && newFinishDate !== null) mudouFinish = true;
+          else if (atualFinishDate !== null && newFinishDate === null) mudouFinish = true;
+          else if (atualFinishDate !== null && newFinishDate !== null) {
+            if (atualFinishDate.getTime() !== newFinishDate.getTime()) mudouFinish = true;
+          }
+
+          const mudou = mudouLocal || mudouGrupo || mudouMeta || mudouQuantidade || mudouFinish;
+
+          if (mudou) {
+            console.log(` Atualizando campanha: ${Campanha_Nome}`);
+
+            await connection.query(
+              `UPDATE Campanha
+               SET Campanha_Local = ?, 
+                   Campanha_Grupo = ?, 
+                   Campanha_Meta = ?, 
+                   Campanha_Quantidade = ?, 
+                   finish_at = ?
+               WHERE Campanha_Nome = ?`,
+              [
+                Campanha_Local || null,
+                Campanha_Grupo || null,
+                Campanha_Meta !== null ? Campanha_Meta : 0,
+                Campanha_Quantidade !== null ? Campanha_Quantidade : 0,
+                newFinishSQL, // pode ser null
+                Campanha_Nome,
+              ]
+            );
+
+            atualizados.push(Campanha_Nome);
+          } else {
+            ignorados.push(Campanha_Nome);
+          }
+        } else {
+          // inserir nova campanha; created_at = NOW()
+          console.log(`Inserindo campanha: ${Campanha_Nome}`);
+
+          await connection.query(
+            `INSERT INTO Campanha
+             (Campanha_Nome, Campanha_Local, Campanha_Grupo, Campanha_Meta, Campanha_Quantidade, created_at, finish_at)
+             VALUES (?, ?, ?, ?, ?, NOW(), ?)`,
+            [
+              Campanha_Nome,
+              Campanha_Local || null,
+              Campanha_Grupo || null,
+              Campanha_Meta !== null ? Campanha_Meta : 0,
+              Campanha_Quantidade !== null ? Campanha_Quantidade : 0,
+              newFinishSQL,
+            ]
+          );
+
+          inseridos.push(Campanha_Nome);
+        }
+      } // for
+
+      await connection.commit();
+
+      console.log("Importação concluída!");
+      console.log("Inseridos:", inseridos.length, inseridos);
+      console.log("Atualizados:", atualizados.length, atualizados);
+      console.log("Ignorados:", ignorados.length, ignorados);
+
+      res.json({
+        msg: `Importação concluída! (${inseridos.length} novos, ${atualizados.length} atualizados, ${ignorados.length} sem mudança)`,
+        inseridos,
+        atualizados,
+        ignorados,
+      });
+    } catch (err) {
+      await connection.rollback();
+      console.error("❌ Erro durante importação:", err);
+      res.status(500).json({ error: "Erro ao importar campanhas." });
+    } finally {
+      connection.release();
+    }
+  } catch (err) {
+    console.error("❌ Erro ao processar arquivo Excel:", err);
+    res.status(500).json({ error: "Erro ao processar arquivo Excel." });
+  }
+});
+
 
 r.post("/cadastroUsuario", async (req, res) => {
   try {
@@ -649,154 +883,5 @@ r.post("/cadastroUsuario", async (req, res) => {
     res.status(500).json({ error: "Erro no servidor ao cadastrar usuário" });
   }
 });
-
-
-r.get("/api/messages/conversa/:user1/:user2", async (req, res) => {
-  const { user1, user2 } = req.params;
-  console.log("📩 [GET] Rota /api/messages/conversa chamada");
-  console.log("➡️ Params recebidos:", { user1, user2 });
-
-  try {
-    const [conversaRows] = await pool.query(
-      `SELECT c.idConversa
-       FROM Conversas c
-       JOIN ParticipantesConversa p1 ON c.idConversa = p1.idConversa
-       JOIN ParticipantesConversa p2 ON c.idConversa = p2.idConversa
-       WHERE p1.idAluno = ? AND p2.idAluno = ?`,
-      [user1, user2]
-    );
-
-    console.log("🔍 Conversa encontrada:", conversaRows);
-
-    if (conversaRows.length === 0) {
-      console.log("⚠️ Nenhuma conversa encontrada entre os usuários");
-      return res.json([]);
-    }
-
-    const idConversa = conversaRows[0].idConversa;
-    console.log("🗂️ idConversa:", idConversa);
-
-    const [rows] = await pool.query(
-      `SELECT * FROM Mensagens
-       WHERE idConversa = ?
-       ORDER BY createdAt ASC`,
-      [idConversa]
-    );
-
-    console.log(`💬 ${rows.length} mensagens encontradas`);
-    res.json(rows);
-  } catch (err) {
-    console.error("❌ Erro ao buscar conversa:", err);
-    res.status(500).json({ error: "Erro ao buscar conversa" });
-  }
-});
-
-// 🔹 Enviar nova mensagem
-r.post("/api/messages", async (req, res) => {
-  const { idRemetente, idDestinatario, mensagem } = req.body;
-  console.log("📤 [POST] /api/messages chamada");
-  console.log("➡️ Body recebido:", { idRemetente, idDestinatario, mensagem });
-
-  try {
-    const [conversaRows] = await pool.query(
-      `SELECT c.idConversa
-       FROM Conversas c
-       JOIN ParticipantesConversa p1 ON c.idConversa = p1.idConversa
-       JOIN ParticipantesConversa p2 ON c.idConversa = p2.idConversa
-       WHERE p1.idAluno = ? AND p2.idAluno = ?`,
-      [idRemetente, idDestinatario]
-    );
-
-    console.log("🔍 Conversa existente:", conversaRows);
-
-    let idConversa;
-    if (conversaRows.length > 0) {
-      idConversa = conversaRows[0].idConversa;
-      console.log("✅ Conversa já existente:", idConversa);
-    } else {
-      console.log("🆕 Criando nova conversa...");
-      const [novaConversa] = await pool.query(
-        `INSERT INTO Conversas (createdAt) VALUES (NOW())`
-      );
-      idConversa = novaConversa.insertId;
-      console.log("🆔 Nova conversa criada:", idConversa);
-
-      await pool.query(
-        `INSERT INTO ParticipantesConversa (idConversa, idAluno)
-         VALUES (?, ?), (?, ?)`,
-        [idConversa, idRemetente, idConversa, idDestinatario]
-      );
-      console.log("👥 Participantes inseridos com sucesso");
-    }
-
-    const [result] = await pool.query(
-      `INSERT INTO Mensagens (idConversa, idRemetente, mensagem, createdAt)
-       VALUES (?, ?, ?, NOW())`,
-      [idConversa, idRemetente, mensagem]
-    );
-
-    console.log("💾 Mensagem salva com sucesso:", result);
-
-    const novaMensagem = {
-      idMensagem: result.insertId,
-      idConversa,
-      idRemetente,
-      mensagem,
-      createdAt: new Date(),
-    };
-
-    if (req.io) {
-      req.io.emit("receivedMessage", novaMensagem);
-      console.log("📡 Mensagem emitida via socket:", novaMensagem);
-    } else {
-      console.log("⚠️ req.io não definido (sem socket ativo)");
-    }
-
-    res.status(201).json(novaMensagem);
-  } catch (err) {
-    console.error("❌ Erro ao enviar mensagem:", err);
-    res.status(500).json({ error: "Erro ao enviar mensagem" });
-  }
-});
-
-// 🔹 Editar mensagem
-r.put("/api/messages/:id", async (req, res) => {
-  const { id } = req.params;
-  const { mensagem } = req.body;
-  console.log("✏️ [PUT] Editando mensagem:", id, "->", mensagem);
-
-  try {
-    await pool.query(`UPDATE Mensagens SET mensagem = ? WHERE idMensagem = ?`, [
-      mensagem,
-      id,
-    ]);
-    console.log("✅ Mensagem atualizada com sucesso");
-
-    if (req.io) req.io.emit("editedMessage", { idMensagem: id, mensagem });
-    res.json({ success: true });
-  } catch (err) {
-    console.error("❌ Erro ao editar mensagem:", err);
-    res.status(500).json({ error: "Erro ao editar mensagem" });
-  }
-});
-
-// 🔹 Deletar mensagem
-r.delete("/api/messages/:id", async (req, res) => {
-  const { id } = req.params;
-  console.log("🗑️ [DELETE] Deletando mensagem:", id);
-
-  try {
-    await pool.query(`DELETE FROM Mensagens WHERE idMensagem = ?`, [id]);
-    console.log("✅ Mensagem deletada com sucesso");
-
-    if (req.io) req.io.emit("deletedMessage", { idMensagem: id });
-    res.json({ success: true });
-  } catch (err) {
-    console.error("❌ Erro ao deletar mensagem:", err);
-    res.status(500).json({ error: "Erro ao deletar mensagem" });
-  }
-});
-
-
 
 export default r;
