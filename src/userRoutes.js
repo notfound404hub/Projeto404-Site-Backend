@@ -69,44 +69,91 @@ r.post("/delete", async (req, res) => {
 });
 r.post("/login", async (req, res) => {
   try {
-    const { Aluno_Email, Aluno_Senha } = req.body;
-    console.log(Aluno_Email, Aluno_Senha);
+    const {Email, Senha } = req.body;
+    console.log(Email, Senha);
 
     const [rows] = await pool.query(
       "SELECT * FROM Aluno WHERE Aluno_Email = ?",
-      [Aluno_Email]
+      [Email]
     );
-
-    if (rows.length === 0) {
+    const [rows2] = await pool.query(
+      "SELECT * FROM Usuario WHERE Usuario_Email = ?",
+      [Email]
+    );
+    console.log(rows)
+    console.log(rows2)
+    if ((rows.length === 0)&&(rows2.length === 0)) {
       return res
         .status(400)
         .json({ error: "E-Mail ou senha Senha incorretos" });
     }
-
-    const user = rows[0];
-    const ok = await bcrypt.compare(Aluno_Senha, user.Aluno_Senha);
+    let user = "";
+    let ok = ""
+    if(rows.length > 0){
+      console.log("E-mail de um(a) aluno(a)")
+      user = rows[0];
+      ok = await bcrypt.compare(Senha, user.Aluno_Senha);
+    }else if(rows2.length > 0){
+      console.log("E-mail de um(a) usuário(a)")
+      user = rows2[0];
+      ok = await bcrypt.compare(Senha, user.Usuario_Senha);
+    }
 
     if (!ok) {
       return res.status(401).json({ error: "Credenciais inválidas" });
     }
 
-    if (!ok)
-      return res
-        .status(401)
-        .json({ error: "Credenciais inválidas", details: err.message });
 
 
-    return res.status(200).json({
-      msg: "Login bem sucedido",
-      ID_Aluno: user.ID_Aluno,
-      Aluno_Nome: user.Aluno_Nome,
-      Aluno_Email: user.Aluno_Email,
-    });
+    if(!user.Foto){
+      if(rows.length > 0){
+        return res.status(200).json({
+          msg: "Login bem sucedido, va pra tela de cadastro, de aluno",
+          ID_Aluno: user.ID_Aluno,
+          Aluno_Nome: user.Aluno_Nome,
+          Aluno_Email: user.Aluno_Email,
+          tela:"/Cadastro",
+        });
+      }else{
+        if(rows2.length > 0){
+          return res.status(200).json({
+            msg: "Login bem sucedido, va pra tela de cadastro, de usuario",
+            ID_Aluno: user.ID_Aluno,
+            Aluno_Nome: user.Aluno_Nome,
+            Aluno_Email: user.Aluno_Email,
+            tela:"/Cadastro",
+          });
+      }}
+    }else{
+      if(rows.length > 0){
+        return res.status(200).json({
+          msg: "Login bem sucedido, va pra tela de adm, de aluno",
+          ID_Aluno: user.ID_Aluno,
+          Aluno_Nome: user.Aluno_Nome,
+          Aluno_Email: user.Aluno_Email,
+          tela:"/admin",
+        });
+      }else{
+        if(rows2.length > 0){
+          return res.status(200).json({
+            msg: "Login bem sucedido, va pra tela de adm, de usuario",
+            ID_Aluno: user.ID_Aluno,
+            Aluno_Nome: user.Aluno_Nome,
+            Aluno_Email: user.Aluno_Email,
+            tela:"/admin",
+          });
+      }}
+    }
+
   } catch (err) {
     console.error("Erro no login:", err.message);
     res.status(500).json({ error: "Erro no login", details: err.message });
   }
 });
+
+
+
+
 r.post("/grupos", async (req, res) => {
   console.log("Requisição recebida: ", req.body);
   try {
