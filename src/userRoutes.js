@@ -4,7 +4,7 @@ import bcrypt from "bcrypt";
 import multer from "multer";
 import xlsx from "xlsx";
 import {createToken, denyToken} from "./services/tokenService.js"
-import {forgotPassword, login, resetPassword} from
+import {enviarEmailVerificacao, forgotPassword, login, resetPassword} from
 './controllers/authController.js'
 
 console.log("userRoutes.js carregado");
@@ -48,6 +48,8 @@ r.post('/auth/forgotPassword', forgotPassword)
 r.put('/auth/resetPassword', resetPassword)
 
 r.post('/login', login)
+
+r.post('/verificar', enviarEmailVerificacao)
 
 
 

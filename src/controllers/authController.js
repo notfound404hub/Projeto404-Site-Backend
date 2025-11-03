@@ -173,7 +173,7 @@ export const enviarEmailVerificacao = async (req, res) => {
 
         if (rows.length) {
             const user = rows[0]
-            const { token } = createToken({ id: user.ID_Aluno }, { expiresIn: "15m" })
+            const { token } = createToken({ id: user.ID_Aluno }, { expiresIn: "10m" })
             const verifyLink = `${process.env.FRONTEND_URL}/verificar/${token}`
 
             await transporter.sendMail({
@@ -183,7 +183,7 @@ export const enviarEmailVerificacao = async (req, res) => {
                 html: `<p>Olá, ${user.Aluno_Nome}!</p>
                           <p>Essa mensagem foi enviada para realizar a verificação do seu email. Clique no link abaixo para verificar seu email:</p>
                           <a href="${verifyLink}">${verifyLink}</a>
-                          <p>O link é válido por 15 minutos.</p>`
+                          <p>O link é válido por 10 minutos.</p>`
             })
 
             message = "Email de verificação enviado"
