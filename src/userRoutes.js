@@ -4,7 +4,7 @@ import bcrypt from "bcrypt";
 import multer from "multer";
 import xlsx from "xlsx";
 import {createToken, denyToken} from "./services/tokenService.js"
-import {forgotPassword} from
+import {forgotPassword, login, resetPassword} from
 './controllers/authController.js'
 
 console.log("userRoutes.js carregado");
@@ -12,38 +12,44 @@ console.log("userRoutes.js carregado");
 const upload = multer({ dest: "uploads/" });
 const r = express.Router();
 
-r.post("/login", async (req, res) => {
-  try {
-    const { Aluno_Email, Aluno_Senha } = req.body;
-    console.log(Aluno_Email, Aluno_Senha);
+// r.post("/login", async (req, res) => {
+//   try {
+//     const { Aluno_Email, Aluno_Senha } = req.body;
+//     console.log(Aluno_Email, Aluno_Senha);
 
-    const [rows] = await pool.query(
-      "SELECT * FROM Usuario WHERE Usuario_Email = ? AND Usuario_Senha = ?",
-      [Usuario_Email, Usuario_Senha]
-    );
+//     const [rows] = await pool.query(
+//       "SELECT * FROM Aluno WHERE Aluno_Email = ? AND Aluno_Senha = ?",
+//       [Aluno_Email, Aluno_Senha]
+//     );
 
-    if (rows.length === 0) {
-      return res.status(400).json({ error: "E-Mail ou senha Senha incorretos" });
-    }
+//     if (rows.length === 0) {
+//       return res.status(400).json({ error: "E-Mail ou senha Senha incorretos" });
+//     }
 
-    const user = rows[0]
-    const ok = await bcrypt.compare(Aluno_Senha, user.Aluno_Senha)
-    if(!ok) return res.status(401).json({error:"Credenciais inválidas", details:err.message})  
+//     const user = rows[0]
+//     const ok = await bcrypt.compare(Aluno_Senha, user.Aluno_Senha)
+//     if(!ok) return res.status(401).json({error:"Credenciais inválidas", details:err.message})  
 
 
-    return res.status(200).json({
-      msg: "Login bem sucedido",
-      ID_Aluno: user.ID_Aluno,
-      Aluno_Nome: user.Aluno_Nome,
-      Aluno_Email: user.Aluno_Email
-    });
-  } catch (err) {
-    console.error("Erro no login:", err.message);
-    res.status(500).json({ error: "Erro no login", details: err.message });
-  }
-});
+//     return res.status(200).json({
+//       msg: "Login bem sucedido",
+//       ID_Aluno: user.ID_Aluno,
+//       Aluno_Nome: user.Aluno_Nome,
+//       Aluno_Email: user.Aluno_Email
+//     });
+//   } catch (err) {
+//     console.error("Erro no login:", err.message);
+//     res.status(500).json({ error: "Erro no login", details: err.message });
+//   }
+// });
 
 r.post('/auth/forgotPassword', forgotPassword)
+
+r.put('/auth/resetPassword', resetPassword)
+
+r.post('/login', login)
+
+
 
 
 
