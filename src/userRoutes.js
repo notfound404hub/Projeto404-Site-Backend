@@ -49,7 +49,7 @@ r.put('/auth/resetPassword', resetPassword)
 
 r.post('/login', login)
 
-r.post('/verificar', enviarEmailVerificacao)
+r.post('/verificar/:token', enviarEmailVerificacao)
 
 
 

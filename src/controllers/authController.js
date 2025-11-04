@@ -26,7 +26,8 @@ export const login = async (req, res) => {
         if (!ok) return res.status(401).json({ error: "Credenciais inválidas" })
 
         const { token } = createToken({ id: user.ID_Aluno })
-        return res.status(200).json({ msg: "Login concluído!", token })
+        const verifyLink = `${process.env.FRONTEND_URL}/verificar/${token}`
+        return res.status(200).json({ msg: "Login concluído!", token, verifyLink })
 
     } catch (err) {
         console.error("login error:", err)
@@ -122,11 +123,8 @@ export const forgotPassword = async (req, res) => {
                           <p>Você solicitou a redefinição de senha. Clique no link abaixo para criar uma nova senha:</p>
                           <a href="${resetLink}">${resetLink}</a>
                           <p>O link é válido por 15 minutos.</p>`
-
-            })
-            
+            })            
             message = "Email de recuperação enviado"
-
         } else {
             message = "A mensagem não pode ser enviada"
         }
@@ -161,24 +159,24 @@ export const resetPassword = async (req, res) => {
 }
 
 export const enviarEmailVerificacao = async (req, res) => {
-    const {email} = req.body
-
-    if (!email) return res.status(400).json({ error: "Preencha todos os campos" })
+    const {token} = req.params
 
     try {
-        const [rows] = await db.query("SELECT * FROM Aluno WHERE Aluno_Email = ?", { email })
-        if (!rows.length) return res.status(401).json({ error: "E-mail não encontrado" })
-
-        let message = ""
-
-        if (rows.length) {
+        const decoded = verifyToken(token)
+        const userId = decoded.id        
+        
+        let message = ""        
+            const [rows] = await db.query("SELECT * FROM Aluno WHERE ID_Aluno = ?", [userId])
+            if(!rows) return res.status(404).json({error:"Usuário não encontrado"})
+            
             const user = rows[0]
-            const { token } = createToken({ id: user.ID_Aluno }, { expiresIn: "10m" })
-            const verifyLink = `${process.env.FRONTEND_URL}/verificar/${token}`
+
+            const { tokenVerifyMail } = createToken({ id: user.ID_Aluno }, { expiresIn: "10m" })
+            const verifyLink = `${process.env.FRONTEND_URL}/verificar/${tokenVerifyMail}`
 
             await transporter.sendMail({
                 from: process.env.EMAIL_USER,
-                to: email,
+                to: user.Aluno_Email,
                 subject: "Verificação de email",
                 html: `<p>Olá, ${user.Aluno_Nome}!</p>
                           <p>Essa mensagem foi enviada para realizar a verificação do seu email. Clique no link abaixo para verificar seu email:</p>
@@ -187,13 +185,11 @@ export const enviarEmailVerificacao = async (req, res) => {
             })
 
             message = "Email de verificação enviado"
-        }else{
-            message = "Erro ao enviar o email de verificação"
-        }
 
         return res.status(200).json({message})
     } catch (err) {
         console.error(err)
+        message = "Erro ao enviar o email de verificação"
         return res.status(400).json({error:"Token inválido ou expirado"})
     }
 }
