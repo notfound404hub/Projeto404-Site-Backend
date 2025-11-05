@@ -98,12 +98,16 @@ r.post("/login", async (req, res) => {
       user = rows2[0];
       ok = await bcrypt.compare(Senha, user.Usuario_Senha);
     }
+      "SELECT * FROM Usuario WHERE Usuario_Email = ? AND Usuario_Senha = ?",
+      [Usuario_Email, Usuario_Senha]
+    );
 
-    if (!ok) {
-      return res.status(401).json({ error: "Credenciais inválidas" });
+    if (rows.length === 0) {
+      return res.status(400).json({ error: "E-Mail ou senha Senha incorretos" });
     }
-
-
+    const user = rows[0]
+    const ok = await bcrypt.compare(Aluno_Senha, user.Aluno_Senha)
+    if(!ok) return res.status(401).json({error:"Credenciais inválidas", details:err.message})  
 
     if(!user.Foto){
       if(rows.length > 0){
@@ -237,6 +241,27 @@ r.post("/mentores", async (req, res) => {
     res.status(500).json({ error: "Erro no cadastro", details: err.message });
   }
 });
+
+r.post("/forgot-password", async (req, res) => {
+  
+  const{Aluno_Email,newPassword} = req.body
+
+  if(!Aluno_Email || !newPassword){
+    return res.status(400).json({error:"Envie email e senha"})
+  }
+ 
+  try{
+    const hashed = await bcrypt.hash(newPassword, 10)
+    await db.query("UPDATE Aluno SET Aluno_Senha = ? WHERE Aluno_Email = ?",
+      [hashed, Aluno_Email]
+    )
+    return res.json({message: "Se o email existir, a senha foi redefinida"})
+  }catch(err){
+    console.error("forgotPassword error", err)
+    return res.status(500).json({error: "Erro ao redefinir a senha"})
+  }  
+})
+
 r.delete("/usuario/:ID_Usuario", async (req, res) => {
   try {
     const hashed = await bcrypt.hash(newPassword, 10);
