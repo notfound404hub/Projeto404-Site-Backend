@@ -363,12 +363,19 @@ r.put("/update", async (req, res) => {
 r.post("/filtrar", async (req, res) => {
   try {
     const { filtros, tabela } = req.body;
-    console.log(filtros);
+    console.log("🧩 Filtros recebidos:", filtros);
+    console.log("📋 Tabela recebida:", tabela);
 
-    // se não tiver filtros, retorna tudo
+    // ✅ Caso especial: se o campo "tabela" já vier com WHERE (ex: "Transacao WHERE transacao_Tipo = 'Entrada'")
+    if (typeof tabela === "string" && tabela.toUpperCase().includes("WHERE")) {
+      const query = `SELECT * FROM ${tabela}`;
+      console.log("⚙️ Executando query direta:", query);
 
-    console.log(tabela);
+      const [rows] = await pool.query(query);
+      return res.json(rows);
+    }
 
+    // ✅ Caso normal: aplicar filtros dinamicamente
     if (!filtros || !Array.isArray(filtros) || filtros.length === 0) {
       const [rows] = await pool.query(`SELECT * FROM ${tabela}`);
       return res.json(rows);
@@ -411,15 +418,17 @@ r.post("/filtrar", async (req, res) => {
       ? `WHERE ${conditions.join(" AND ")}`
       : "";
 
-    const query = `SELECT * FROM ${tabela} ${whereClause}`;
-    console.log(`SELECT * FROM ${tabela} ${whereClause} `);
+    const query = `SELECT * FROM ${tabela}${whereClause}`;
+    console.log("🧾 Query final:", query);
     const [rows] = await pool.query(query, values);
+
     res.json(rows);
   } catch (error) {
-    console.error(`Erro ao filtrar ${tabela}:`, error);
-    res.status(500).json({ error: `Erro ao filtrar ${tabela}` });
+    console.error(`❌ Erro ao filtrar ${req.body.tabela}:`, error);
+    res.status(500).json({ error: `Erro ao filtrar ${req.body.tabela}` });
   }
 });
+
 r.post("/ordenar", async (req, res) => {
   try {
     const { campo, direcao, tabela } = req.body;
