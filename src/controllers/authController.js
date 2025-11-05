@@ -26,8 +26,11 @@ export const login = async (req, res) => {
         if (!ok) return res.status(401).json({ error: "Credenciais inválidas" })
 
         const { token } = createToken({ id: user.ID_Aluno })
+
+        const verificado = user.Verificado
+
         const verifyLink = `${process.env.FRONTEND_URL}/verificar/${token}`
-        return res.status(200).json({ msg: "Login concluído!", token, verifyLink })
+        return res.status(200).json({ msg: "Login concluído!", token, verifyLink, verificado })
 
     } catch (err) {
         console.error("login error:", err)
@@ -60,7 +63,6 @@ export const alunos = async (req, res) => {
     }
 }
 
-
 export const grupos = async (req, res) => {
     const { nome, curso } = req.body
 
@@ -82,6 +84,59 @@ export const grupos = async (req, res) => {
     }
 }
 
+export const cadastroUsuario = async (req, res) => {
+    try {
+        const { nome, empresa, cpfCnpj, email, telefone, senha, tabela } = req.body;
+        const hashed = await bcrypt.hash(senha, 10)
+
+        if (!nome || !email || !senha) {
+            return res.status(400).json({
+                error: "Nome, email e senha são obrigatórios"
+            });
+        }
+
+        const [emailExists] = await pool.query(
+            "SELECT * FROM Usuario WHERE Usuario_Email = ?",
+            [email]
+        );
+
+        if (emailExists.length > 0) {
+            return res.status(400).json({
+                error: "Este email já está cadastrado"
+            });
+        }
+
+        if (cpfCnpj) {
+            const [cpfExists] = await pool.query(
+                "SELECT * FROM Usuario WHERE Usuario_CPF = ?",
+                [cpfCnpj]
+            );
+
+            if (cpfExists.length > 0) {
+                return res.status(400).json({
+                    error: "Este CPF/CNPJ já está cadastrado"
+                });
+            }
+        }
+
+        const [result] = await pool.query(
+            `INSERT INTO Usuario
+      (Usuario_Nome, Usuario_Empresa, Usuario_CPF, Usuario_Email, Usuario_Telefone, Usuario_Senha) 
+      VALUES (?, ?, ?, ?, ?, ?)`,
+            [nome, empresa || null, cpfCnpj || null, email, telefone || null, hashed]
+        );
+
+        return res.status(201).json({
+            msg: "Usuário cadastrado com sucesso",
+            ID_Usuario: result.insertId
+        });
+
+    } catch (err) {
+        console.error("Erro no cadastro:", err);
+        res.status(500).json({ error: "Erro no servidor ao cadastrar usuário" });
+    }
+};
+
 
 const transporter = nodemailer.createTransport({
     service: "gmail",
@@ -99,8 +154,6 @@ transporter.verify((error, success) => {
         console.log("✅ Servidor SMTP pronto para enviar mensagens!");
     }
 });
-
-
 
 export const forgotPassword = async (req, res) => {
     const { email } = req.body
@@ -123,7 +176,7 @@ export const forgotPassword = async (req, res) => {
                           <p>Você solicitou a redefinição de senha. Clique no link abaixo para criar uma nova senha:</p>
                           <a href="${resetLink}">${resetLink}</a>
                           <p>O link é válido por 15 minutos.</p>`
-            })            
+            })
             message = "Email de recuperação enviado"
         } else {
             message = "A mensagem não pode ser enviada"
@@ -159,54 +212,55 @@ export const resetPassword = async (req, res) => {
 }
 
 export const enviarEmailVerificacao = async (req, res) => {
-    const {token} = req.params
+    const { token } = req.params
+
+    let message = ""
 
     try {
-        const decoded = verifyToken(token)
-        const userId = decoded.id        
-        
-        let message = ""        
-            const [rows] = await db.query("SELECT * FROM Aluno WHERE ID_Aluno = ?", [userId])
-            if(!rows) return res.status(404).json({error:"Usuário não encontrado"})
-            
-            const user = rows[0]
+        const decoded = await verifyToken(token)
+        const userId = decoded.id
 
-            const { tokenVerifyMail } = createToken({ id: user.ID_Aluno }, { expiresIn: "10m" })
-            const verifyLink = `${process.env.FRONTEND_URL}/verificar/${tokenVerifyMail}`
 
-            await transporter.sendMail({
-                from: process.env.EMAIL_USER,
-                to: user.Aluno_Email,
-                subject: "Verificação de email",
-                html: `<p>Olá, ${user.Aluno_Nome}!</p>
+        const [rows] = await db.query("SELECT * FROM Aluno WHERE ID_Aluno = ?", [userId])
+        if (!rows) return res.status(404).json({ error: "Usuário não encontrado" })
+
+        const user = rows[0]
+
+        const { token: tokenVerifyMail } = createToken({ id: user.ID_Aluno }, { expiresIn: "10m" })
+        const verifyLink = `${process.env.FRONTEND_URL}/verificar/${tokenVerifyMail}`
+
+        await transporter.sendMail({
+            from: process.env.EMAIL_USER,
+            to: user.Aluno_Email,
+            subject: "Verificação de email",
+            html: `<p>Olá, ${user.Aluno_Nome}!</p>
                           <p>Essa mensagem foi enviada para realizar a verificação do seu email. Clique no link abaixo para verificar seu email:</p>
                           <a href="${verifyLink}">${verifyLink}</a>
                           <p>O link é válido por 10 minutos.</p>`
-            })
+        })
 
-            message = "Email de verificação enviado"
-
-        return res.status(200).json({message})
+        return res.status(200).json({ msg: "Email enviado com sucesso", tokenVerifyMail })
     } catch (err) {
         console.error(err)
         message = "Erro ao enviar o email de verificação"
-        return res.status(400).json({error:"Token inválido ou expirado"})
+        return res.status(400).json({ error: "Token inválido ou expirado" })
     }
 }
 
 export const verificarEmail = async (req, res) => {
-    const {token} = req.params
-    
-    try{
-        const decode = await verifyToken(token)
+    const { tokenVerifyMail } = req.params
+
+    try {
+        console.log(tokenVerifyMail)
+        const decode = await verifyToken(tokenVerifyMail)
         const userId = decode.id
-        
+
         await db.query("UPDATE Aluno SET Verificado = ? WHERE ID_Aluno = ?", [true, userId])
 
-        return res.status(200).json({msg:"Seu email foi verificado"})
+        return res.status(200).json({ msg: "Seu email foi verificado" })
 
-    }catch(err){
+    } catch (err) {
         console.error(err)
-        return res.status(500).json({error:"Erro interno de servidor"})
-    }  
+        return res.status(500).json({ error: "Erro interno de servidor" })
+    }
 }
