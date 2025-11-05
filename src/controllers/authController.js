@@ -190,15 +190,14 @@ export const forgotPassword = async (req, res) => {
 }
 
 export const resetPassword = async (req, res) => {
-    const { token, senha, confirmarSenha } = req.body
+    const {senha, confirmarSenha } = req.body
 
     if (!senha || !confirmarSenha) return res.status(400).json({ error: "Preencha todos os campos" })
 
     if (senha != confirmarSenha) return res.status(409).json({ error: "As senhas devem ser iguais" })
 
     try {
-        const decoded = await verifyToken(token)
-        const userId = decoded.id
+        const userId = req.user.id
 
         const hashed = await bcrypt.hash(senha, 10)
         await db.query("UPDATE Aluno SET Aluno_Senha = ? WHERE ID_Aluno = ?", [hashed, userId])
@@ -211,16 +210,12 @@ export const resetPassword = async (req, res) => {
     }
 }
 
-export const enviarEmailVerificacao = async (req, res) => {
-    const { token } = req.params
-
+export const enviarEmailVerificacao = async (req, res) => {    
     let message = ""
 
     try {
-        const decoded = await verifyToken(token)
-        const userId = decoded.id
-
-
+        const userId = req.user.id
+        
         const [rows] = await db.query("SELECT * FROM Aluno WHERE ID_Aluno = ?", [userId])
         if (!rows) return res.status(404).json({ error: "Usuário não encontrado" })
 
@@ -248,12 +243,8 @@ export const enviarEmailVerificacao = async (req, res) => {
 }
 
 export const verificarEmail = async (req, res) => {
-    const { tokenVerifyMail } = req.params
-
     try {
-        console.log(tokenVerifyMail)
-        const decode = await verifyToken(tokenVerifyMail)
-        const userId = decode.id
+        const userId = req.user.id
 
         await db.query("UPDATE Aluno SET Verificado = ? WHERE ID_Aluno = ?", [true, userId])
 

@@ -53,17 +53,17 @@ r.post('/auth/forgotPassword', forgotPassword)
 
 r.put('/auth/resetPassword', authMiddleware, resetPassword)
 
-r.post('/enviaremail/:token', authMiddleware, enviarEmailVerificacao)
+r.post('/enviaremail', authMiddleware, enviarEmailVerificacao)
 
-r.get('/verificar/:tokenVerifyMail',authMiddleware, verificarEmail)
+r.get('/verificar',authMiddleware, verificarEmail)
 
 r.get('usuario/:ID_Usuario', authMiddleware, usuarioGetById)
 
 r.delete('usuario/:ID_Usuario', authMiddleware, usuarioDeleteById)
 
-r.put('usuario/:ID_Usuario', authMiddleware, updateUsuarioById)
+r.put('/usuario/:ID_Usuario', authMiddleware, updateUsuarioById)
 
-r.get('/usuario', authMiddleware, getAllUsuarios)
+r.get('/usuarios', authMiddleware, getAllUsuarios)
 
 r.delete('/deleteFromTable', authMiddleware, deleteFromTable)
 
