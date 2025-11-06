@@ -54,7 +54,7 @@ export const alunos = async (req, res) => {
 
             await pool.query("BEGIN")
 
-            await db.query("INSERT INTO Aluno(nome, email, senha, ra, verificado) VALUES (?, ?, ?, ?, ?)", [nome, email, hashed, ra, false])
+            await db.query("INSERT INTO Aluno(Aluno_Nome, Aluno_Email, Aluno_Senha, Aluno_RA, verificado) VALUES (?, ?, ?, ?, ?)", [nome, email, hashed, ra, false])
             return res.status(201).json({ msg: "Usuário cadastrado com sucesso!" })
         }
     } catch (err) {
@@ -67,13 +67,13 @@ export const grupos = async (req, res) => {
     const { nome, curso } = req.body
 
     try {
-        const [rows] = await db.query("SELECT * FROM Grupo WHERE Grupo_Nome = ?", { nome })
+        const [rows] = await db.query("SELECT * FROM Grupo WHERE Grupo_Nome = ?", [nome])
 
         if (rows.length) return res.status(409).json({ error: "Grupo já cadastrado" })
 
         await db.query("BEGIN")
 
-        await db.query("SELECT INTO Grupo(nome, curso) VALUES (?, ?)", [nome, curso])
+        await db.query("INSERT INTO Grupo(Grupo_Nome, Grupo_Curso) VALUES (?, ?)", [nome, curso])
         res.status(201).json({ msg: "Grupo cadastrado com sucesso!" })
         await db.query("COMMIT")
 

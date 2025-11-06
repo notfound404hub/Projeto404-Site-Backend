@@ -1,10 +1,10 @@
 import express from "express";
 import multer from "multer";
-import {alunos, cadastroUsuario, enviarEmailVerificacao, forgotPassword, grupos, login, mentores, resetPassword, verificarEmail} from
+import {alunos, cadastroUsuario, enviarEmailVerificacao, forgotPassword, grupos, login, resetPassword, verificarEmail} from
 './controllers/authController.js'
 import { deleteFromTable, filtrar, getAllUsuarios, importarUsuarios, ordenar, updateUsuarioById, usuarioDeleteById, usuarioGetById } from "./controllers/userController.js";
 import { authMiddleware } from './middlewares/authMiddleware.js'
-import { deleteMessagesById, getMessagesById, updateMessagesById } from "./controllers/chatController.js";
+import { deleteMessagesById, getMessagesById, updateMessagesById, postMessages } from "./controllers/chatController.js";
 
 console.log("userRoutes.js carregado");
 
@@ -48,7 +48,7 @@ r.post('/importarusuarios', authMiddleware, importarUsuarios, upload.single("fil
 
 r.get('/messages/:userId', authMiddleware, getMessagesById)
 
-r.post('/messages', authMiddleware, postMessage)
+r.post('/messages', authMiddleware, postMessages)
 
 r.put('/messages/:id', authMiddleware, updateMessagesById)
 
