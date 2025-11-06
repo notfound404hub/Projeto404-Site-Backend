@@ -15,6 +15,8 @@ console.log("userRoutes.js carregado");
 const r = express.Router();
 
 r.post("/delete", async (req, res) => {
+
+
   try {
     const { ids, tabela } = req.body;
 
@@ -67,6 +69,8 @@ r.post("/delete", async (req, res) => {
     res.status(500).json({ error: "Erro no servidor ao excluir itens." });
   }
 });
+
+
 r.post("/login", async (req, res) => {
   try {
     const {Email, Senha } = req.body;
