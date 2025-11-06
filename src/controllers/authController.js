@@ -39,24 +39,22 @@ export const login = async (req, res) => {
 }
 
 export const alunos = async (req, res) => {
-    const { nome, email, senha, ra } = req.body
-    if (!nome || !email || !senha || !ra) {
-        return res.status(400).json({ error: "Preencha todos os campos" })
-    }
     try {
         const alunos = req.body
-        for (aluno in alunos) {
-            const { nome, email, senha, ra } = aluno
-            const hashed = await bcrypt.hash(senha, 10)
+        for (const aluno of alunos) {
+            const { Aluno_Nome, Aluno_Email, Aluno_Senha, Aluno_RA } = aluno
+            if (!Aluno_Nome || !Aluno_Email || !Aluno_Senha || !Aluno_RA) {
+                console.log(req.body)
+                return res.status(400).json({ error: "Preencha todos os campos" })
+            }
+            const hashed = await bcrypt.hash(Aluno_Senha, 10)
 
-            const [exists] = await db.query("SELECT ID_Aluno FROM Aluno WHERE Aluno_Email = ?", [email])
+            const [exists] = await db.query("SELECT ID_Aluno FROM Aluno WHERE Aluno_Email = ?", [Aluno_Email])
             if (exists.length) return res.status(409).json({ error: "Email já cadastrado" })
 
-            await pool.query("BEGIN")
-
-            await db.query("INSERT INTO Aluno(Aluno_Nome, Aluno_Email, Aluno_Senha, Aluno_RA, verificado) VALUES (?, ?, ?, ?, ?)", [nome, email, hashed, ra, false])
-            return res.status(201).json({ msg: "Usuário cadastrado com sucesso!" })
+            await db.query("INSERT INTO Aluno(Aluno_Nome, Aluno_Email, Aluno_Senha, Aluno_RA, verificado) VALUES (?, ?, ?, ?, ?)", [Aluno_Nome, Aluno_Email, hashed, Aluno_RA, false])
         }
+        return res.status(201).json({ msg: "Usuário cadastrado com sucesso!" })
     } catch (err) {
         console.error("register error", err)
         return res.status(500).json({ error: "Erro ao registrar usuário" })
@@ -190,7 +188,7 @@ export const forgotPassword = async (req, res) => {
 }
 
 export const resetPassword = async (req, res) => {
-    const {senha, confirmarSenha } = req.body
+    const { senha, confirmarSenha } = req.body
 
     if (!senha || !confirmarSenha) return res.status(400).json({ error: "Preencha todos os campos" })
 
@@ -210,12 +208,12 @@ export const resetPassword = async (req, res) => {
     }
 }
 
-export const enviarEmailVerificacao = async (req, res) => {    
+export const enviarEmailVerificacao = async (req, res) => {
     let message = ""
 
     try {
         const userId = req.user.id
-        
+
         const [rows] = await db.query("SELECT * FROM Aluno WHERE ID_Aluno = ?", [userId])
         if (!rows) return res.status(404).json({ error: "Usuário não encontrado" })
 
