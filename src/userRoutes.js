@@ -1,17 +1,18 @@
 import express from "express";
-import pool from "./db.js";
-import bcrypt from "bcrypt";
 import multer from "multer";
-import xlsx from "xlsx";
-
-import { createToken, denyToken } from "./services/tokenService.js";
+import {alunos, cadastroUsuario, enviarEmailVerificacao, forgotPassword, grupos, login, mentores, resetPassword, verificarEmail} from
+'./controllers/authController.js'
+import { deleteFromTable, filtrar, getAllUsuarios, importarUsuarios, ordenar, updateUsuarioById, usuarioDeleteById, usuarioGetById } from "./controllers/userController.js";
+import { authMiddleware } from './middlewares/authMiddleware.js'
+import { deleteMessagesById, getMessagesById, updateMessagesById } from "./controllers/chatController.js";
 
 console.log("userRoutes.js carregado");
-
 
 const upload = multer({ dest: "uploads/" });
 
 console.log("userRoutes.js carregado");
+
+const upload = multer({ dest: "uploads/" });
 const r = express.Router();
 
 r.post("/delete", async (req, res) => {
@@ -201,14 +202,14 @@ r.post("/alunos", async (req, res) => {
         [Aluno_Email]
       );
 
-      if (rows.length > 0) {
-        return res.status(400).json({ error: "Email já cadastrado" });
-      }
+//       if (rows.length > 0) {
+//         return res.status(400).json({ error: "Email já cadastrado" });
+//       }
 
-      await pool.query(
-        "INSERT INTO Aluno(Aluno_RA, Aluno_Nome, Aluno_Email, Aluno_Senha, Id_Grupo) VALUES (?, ?, ?, ?, ?)",
-        [Aluno_RA, Aluno_Nome, Aluno_Email, hashed, Id_Grupo]
-      );
+//       await pool.query(
+//         "INSERT INTO Aluno(Aluno_RA, Aluno_Nome, Aluno_Email, Aluno_Senha, Id_Grupo) VALUES (?, ?, ?, ?, ?)",
+//         [Aluno_RA, Aluno_Nome, Aluno_Email, hashed, Id_Grupo]
+//       );
 
       console.log("Aluno cadastrado", { aluno });
     }
@@ -244,11 +245,11 @@ r.post("/mentores", async (req, res) => {
 
 r.post("/forgot-password", async (req, res) => {
   
-  const{Aluno_Email,newPassword} = req.body
+//   const{Aluno_Email,newPassword} = req.body
 
-  if(!Aluno_Email || !newPassword){
-    return res.status(400).json({error:"Envie email e senha"})
-  }
+//   if(!Aluno_Email || !newPassword){
+//     return res.status(400).json({error:"Envie email e senha"})
+//   }
  
   try{
     const hashed = await bcrypt.hash(newPassword, 10)
