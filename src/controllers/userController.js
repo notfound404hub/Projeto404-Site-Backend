@@ -5,7 +5,7 @@ import dotenv from "dotenv";
 import xlsx from "xlsx";
 
 export const tabelas = async (req, res) => {
-  const {teste} = req.body;
+  const { teste } = req.body;
   console.log(req.body)
   try {
     let tabela = teste.trim()
@@ -171,6 +171,60 @@ export const usuarioDeleteById = async (req, res) => {
   }
 }
 
+export const updateUsuarioById = async (req, res) => {
+  try {
+    console.log("Requisição recebida para atualizar usuário.");
+
+    const { ID_Usuario } = req.params;
+    const { Usuario_Nome, Usuario_Empresa, Usuario_Telefone, Usuario_Senha } =
+      req.body;
+
+    console.log("Dados recebidos no body:", req.body);
+    console.log("ID recebido nos parâmetros:", ID_Usuario);
+
+    if (!ID_Usuario) {
+      console.log("ID do usuário não informado.");
+      return res.status(400).json({ error: "ID do usuário não informado" });
+    }
+    if (req.body.Usuario_Email || req.body.Usuario_CPF || req.body.created_at) {
+      console.log(
+        "Tentativa de alterar campo protegido (Email, CPF ou created_at)."
+      );
+      return res.status(400).json({
+        error: "Não é permitido alterar Email, CPF/CNPJ ou data de criação",
+      });
+    }
+
+    console.log("Executando UPDATE no banco de dados...");
+
+    const [result] = await db.query(
+      `UPDATE Usuario 
+       SET 
+         Usuario_Nome = ?, 
+         Usuario_Empresa = ?, 
+         Usuario_Telefone = ?, 
+         Usuario_Senha = ?
+       WHERE ID_Usuario = ?`,
+      [
+        Usuario_Nome,
+        Usuario_Empresa,
+        Usuario_Telefone,
+        Usuario_Senha,
+        ID_Usuario,
+      ]
+    );
+
+    console.log("Query executada com sucesso!");
+    console.log(" Resultado do MySQL:", result);
+
+    res.status(200).json({ msg: "Usuário atualizado com sucesso!" });
+  } catch (err) {
+    console.error("Erro no UPDATE:", err.sqlMessage || err.message);
+    res.status(500).json({ error: "Erro no servidor ao atualizar usuário" });
+  }
+};
+
+
 export const getAllUsuarios = async (req, res) => {
   const { teste } = req.body;
   console.log(teste[1]);
@@ -244,16 +298,12 @@ export const filtrar = async (req, res) => {
     console.log("Filtros recebidos:", filtros);
     console.log("Tabela recebida:", tabela);
 
-    if (typeof tabela === "string" && tabela.toUpperCase().includes("WHERE")) {
-      const query = `SELECT * FROM ${tabela}`;
-      console.log("Executando query direta:", query);
-
-      const [rows] = await pool.query(query);
-      return res.json(rows);
-    }
+    const tabelaLimpa = tabela?.trim()
+    const tabelasPermitidas = ["Usuario", "Aluno"]
+    if(!tabelasPermitidas.includes(tabelaLimpa)) return res.status(400).json({error:"Tabela inválida"})
 
     if (!filtros || !Array.isArray(filtros) || filtros.length === 0) {
-      const [rows] = await pool.query(`SELECT * FROM ${tabela}`);
+      const [rows] = await db.query(`SELECT * FROM ${tabela}`);
       return res.json(rows);
     }
 
@@ -294,9 +344,10 @@ export const filtrar = async (req, res) => {
       ? `WHERE ${conditions.join(" AND ")}`
       : "";
 
-    const query = `SELECT * FROM ${tabela}${whereClause}`;
+    const query = `SELECT * FROM ${tabela} ${whereClause}`;
     console.log("Query final:", query);
-    const [rows] = await pool.query(query, values);
+    
+    const [rows] = await db.query(query, values);
 
     res.json(rows);
   } catch (error) {
@@ -335,60 +386,6 @@ export const ordenar = async (req, res) => {
     res.status(500).json({ error: `Erro ao ordenar ${tabela}` });
   }
 };
-
-export const updateUsuarioById = async (req, res) => {
-  try {
-    console.log("Requisição recebida para atualizar usuário.");
-
-    const { ID_Usuario } = req.params;
-    const { Usuario_Nome, Usuario_Empresa, Usuario_Telefone, Usuario_Senha } =
-      req.body;
-
-    console.log("Dados recebidos no body:", req.body);
-    console.log("ID recebido nos parâmetros:", ID_Usuario);
-
-    if (!ID_Usuario) {
-      console.log("ID do usuário não informado.");
-      return res.status(400).json({ error: "ID do usuário não informado" });
-    }
-    if (req.body.Usuario_Email || req.body.Usuario_CPF || req.body.created_at) {
-      console.log(
-        "Tentativa de alterar campo protegido (Email, CPF ou created_at)."
-      );
-      return res.status(400).json({
-        error: "Não é permitido alterar Email, CPF/CNPJ ou data de criação",
-      });
-    }
-
-    console.log("Executando UPDATE no banco de dados...");
-
-    const [result] = await pool.query(
-      `UPDATE Usuario 
-       SET 
-         Usuario_Nome = ?, 
-         Usuario_Empresa = ?, 
-         Usuario_Telefone = ?, 
-         Usuario_Senha = ?
-       WHERE ID_Usuario = ?`,
-      [
-        Usuario_Nome,
-        Usuario_Empresa,
-        Usuario_Telefone,
-        Usuario_Senha,
-        ID_Usuario,
-      ]
-    );
-
-    console.log("Query executada com sucesso!");
-    console.log(" Resultado do MySQL:", result);
-
-    res.status(200).json({ msg: "Usuário atualizado com sucesso!" });
-  } catch (err) {
-    console.error("Erro no UPDATE:", err.sqlMessage || err.message);
-    res.status(500).json({ error: "Erro no servidor ao atualizar usuário" });
-  }
-};
-
 
 export const importarUsuarios = async (req, res) => {
   console.log("Recebendo requisição para importar usuários...");
