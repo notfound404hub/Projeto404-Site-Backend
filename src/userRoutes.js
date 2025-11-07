@@ -4,6 +4,8 @@ import bcrypt from "bcrypt";
 import multer from "multer";
 import xlsx from "xlsx";
 
+
+
 import { createToken, denyToken } from "./services/tokenService.js";
 
 console.log("userRoutes.js carregado");
@@ -14,150 +16,150 @@ const upload = multer({ dest: "uploads/" });
 console.log("userRoutes.js carregado");
 const r = express.Router();
 
-r.post("/delete", async (req, res) => {
+// r.post("/delete", async (req, res) => {
 
 
-  try {
-    const { ids, tabela } = req.body;
+//   try {
+//     const { ids, tabela } = req.body;
 
-    console.log("IDs recebidos:", ids);
-    console.log("Tabela recebida:", tabela);
+//     console.log("IDs recebidos:", ids);
+//     console.log("Tabela recebida:", tabela);
 
-    // Validações
-    if (!ids || !Array.isArray(ids) || ids.length === 0) {
-      return res
-        .status(400)
-        .json({ error: "Nenhum ID informado para exclusão." });
-    }
+//     // Validações
+//     if (!ids || !Array.isArray(ids) || ids.length === 0) {
+//       return res
+//         .status(400)
+//         .json({ error: "Nenhum ID informado para exclusão." });
+//     }
 
-    if (!tabela) {
-      return res
-        .status(400)
-        .json({ error: "Nome da tabela não informado." });
-    }
+//     if (!tabela) {
+//       return res
+//         .status(400)
+//         .json({ error: "Nome da tabela não informado." });
+//     }
 
-    // Segurança: impede SQL injection via nome de tabela
-    const tabelasPermitidas = ["Campanha","Usuario", "Mentor", "Aluno"];
-    if (!tabelasPermitidas.includes(tabela.trim())) {
-      console.log(`A tabela é ${tabela}`)
-      return res
-        .status(400)
-        .json({ error: "Tabela não permitida para exclusão." });
-    }
+//     // Segurança: impede SQL injection via nome de tabela
+//     const tabelasPermitidas = ["Campanha","Usuario", "Mentor", "Aluno"];
+//     if (!tabelasPermitidas.includes(tabela.trim())) {
+//       console.log(`A tabela é ${tabela}`)
+//       return res
+//         .status(400)
+//         .json({ error: "Tabela não permitida para exclusão." });
+//     }
 
-    console.log(`🗑 Excluindo da tabela: ${tabela}, IDs:`, ids);
+//     console.log(`🗑 Excluindo da tabela: ${tabela}, IDs:`, ids);
 
-    // Monta placeholders (?, ?, ?) dinamicamente
-    const placeholders = ids.map(() => "?").join(", ");
+//     // Monta placeholders (?, ?, ?) dinamicamente
+//     const placeholders = ids.map(() => "?").join(", ");
 
-    // Usa interpolação segura apenas no nome da tabela (já validado)
-    const query = `DELETE FROM ${tabela} WHERE ID_${tabela} IN (${placeholders})`;
+//     // Usa interpolação segura apenas no nome da tabela (já validado)
+//     const query = `DELETE FROM ${tabela} WHERE ID_${tabela} IN (${placeholders})`;
 
-    const [result] = await pool.query(query, ids);
+//     const [result] = await pool.query(query, ids);
 
-    if (result.affectedRows === 0) {
-      return res
-        .status(404)
-        .json({ error: "Nenhum registro encontrado para exclusão." });
-    }
+//     if (result.affectedRows === 0) {
+//       return res
+//         .status(404)
+//         .json({ error: "Nenhum registro encontrado para exclusão." });
+//     }
 
-    return res.status(200).json({
-      msg: `${result.affectedRows} registro(s) excluído(s) com sucesso!`,
-    });
-  } catch (err) {
-    console.error("Erro ao excluir itens:", err);
-    res.status(500).json({ error: "Erro no servidor ao excluir itens." });
-  }
-});
+//     return res.status(200).json({
+//       msg: `${result.affectedRows} registro(s) excluído(s) com sucesso!`,
+//     });
+//   } catch (err) {
+//     console.error("Erro ao excluir itens:", err);
+//     res.status(500).json({ error: "Erro no servidor ao excluir itens." });
+//   }
+// });
 
 
-r.post("/login", async (req, res) => {
-  try {
-    const {Email, Senha } = req.body;
-    console.log(Email, Senha);
+// r.post("/login", async (req, res) => {
+//   try {
+//     const {Email, Senha } = req.body;
+//     console.log(Email, Senha);
 
-    const [rows] = await pool.query(
-      "SELECT * FROM Aluno WHERE Aluno_Email = ?",
-      [Email]
-    );
-    const [rows2] = await pool.query(
-      "SELECT * FROM Usuario WHERE Usuario_Email = ?",
-      [Email]
-    );
-    console.log(rows)
-    console.log(rows2)
-    if ((rows.length === 0)&&(rows2.length === 0)) {
-      return res
-        .status(400)
-        .json({ error: "E-Mail ou senha Senha incorretos" });
-    }
-    let user = "";
-    let ok = ""
-    if(rows.length > 0){
-      console.log("E-mail de um(a) aluno(a)")
-      user = rows[0];
-      ok = await bcrypt.compare(Senha, user.Aluno_Senha);
-    }else if(rows2.length > 0){
-      console.log("E-mail de um(a) usuário(a)")
-      user = rows2[0];
-      ok = await bcrypt.compare(Senha, user.Usuario_Senha);
-    }
-      "SELECT * FROM Usuario WHERE Usuario_Email = ? AND Usuario_Senha = ?",
-      [Usuario_Email, Usuario_Senha]
-    );
+//     const [rows] = await pool.query(
+//       "SELECT * FROM Aluno WHERE Aluno_Email = ?",
+//       [Email]
+//     );
+//     const [rows2] = await pool.query(
+//       "SELECT * FROM Usuario WHERE Usuario_Email = ?",
+//       [Email]
+//     );
+//     console.log(rows)
+//     console.log(rows2)
+//     if ((rows.length === 0)&&(rows2.length === 0)) {
+//       return res
+//         .status(400)
+//         .json({ error: "E-Mail ou senha Senha incorretos" });
+//     }
+//     let user = "";
+//     let ok = ""
+//     if(rows.length > 0){
+//       console.log("E-mail de um(a) aluno(a)")
+//       user = rows[0];
+//       ok = await bcrypt.compare(Senha, user.Aluno_Senha);
+//     }else if(rows2.length > 0){
+//       console.log("E-mail de um(a) usuário(a)")
+//       user = rows2[0];
+//       ok = await bcrypt.compare(Senha, user.Usuario_Senha);
+//     }
+//       "SELECT * FROM Usuario WHERE Usuario_Email = ? AND Usuario_Senha = ?",
+//       [Usuario_Email, Usuario_Senha]
+//     );
 
-    if (rows.length === 0) {
-      return res.status(400).json({ error: "E-Mail ou senha Senha incorretos" });
-    }
-    const user = rows[0]
-    const ok = await bcrypt.compare(Aluno_Senha, user.Aluno_Senha)
-    if(!ok) return res.status(401).json({error:"Credenciais inválidas", details:err.message})  
+//     if (rows.length === 0) {
+//       return res.status(400).json({ error: "E-Mail ou senha Senha incorretos" });
+//     }
+//     const user = rows[0]
+//     const ok = await bcrypt.compare(Aluno_Senha, user.Aluno_Senha)
+//     if(!ok) return res.status(401).json({error:"Credenciais inválidas", details:err.message})  
 
-    if(!user.Foto){
-      if(rows.length > 0){
-        return res.status(200).json({
-          msg: "Login bem sucedido, va pra tela de cadastro, de aluno",
-          ID_Aluno: user.ID_Aluno,
-          Aluno_Nome: user.Aluno_Nome,
-          Aluno_Email: user.Aluno_Email,
-          tela:"/Cadastro",
-        });
-      }else{
-        if(rows2.length > 0){
-          return res.status(200).json({
-            msg: "Login bem sucedido, va pra tela de cadastro, de usuario",
-            ID_Aluno: user.ID_Aluno,
-            Aluno_Nome: user.Aluno_Nome,
-            Aluno_Email: user.Aluno_Email,
-            tela:"/Cadastro",
-          });
-      }}
-    }else{
-      if(rows.length > 0){
-        return res.status(200).json({
-          msg: "Login bem sucedido, va pra tela de adm, de aluno",
-          ID_Aluno: user.ID_Aluno,
-          Aluno_Nome: user.Aluno_Nome,
-          Aluno_Email: user.Aluno_Email,
-          tela:"/admin",
-        });
-      }else{
-        if(rows2.length > 0){
-          return res.status(200).json({
-            msg: "Login bem sucedido, va pra tela de adm, de usuario",
-            ID_Aluno: user.ID_Aluno,
-            Aluno_Nome: user.Aluno_Nome,
-            Aluno_Email: user.Aluno_Email,
-            tela:"/admin",
-          });
-      }}
-    }
+//     if(!user.Foto){
+//       if(rows.length > 0){
+//         return res.status(200).json({
+//           msg: "Login bem sucedido, va pra tela de cadastro, de aluno",
+//           ID_Aluno: user.ID_Aluno,
+//           Aluno_Nome: user.Aluno_Nome,
+//           Aluno_Email: user.Aluno_Email,
+//           tela:"/Cadastro",
+//         });
+//       }else{
+//         if(rows2.length > 0){
+//           return res.status(200).json({
+//             msg: "Login bem sucedido, va pra tela de cadastro, de usuario",
+//             ID_Aluno: user.ID_Aluno,
+//             Aluno_Nome: user.Aluno_Nome,
+//             Aluno_Email: user.Aluno_Email,
+//             tela:"/Cadastro",
+//           });
+//       }}
+//     }else{
+//       if(rows.length > 0){
+//         return res.status(200).json({
+//           msg: "Login bem sucedido, va pra tela de adm, de aluno",
+//           ID_Aluno: user.ID_Aluno,
+//           Aluno_Nome: user.Aluno_Nome,
+//           Aluno_Email: user.Aluno_Email,
+//           tela:"/admin",
+//         });
+//       }else{
+//         if(rows2.length > 0){
+//           return res.status(200).json({
+//             msg: "Login bem sucedido, va pra tela de adm, de usuario",
+//             ID_Aluno: user.ID_Aluno,
+//             Aluno_Nome: user.Aluno_Nome,
+//             Aluno_Email: user.Aluno_Email,
+//             tela:"/admin",
+//           });
+//       }}
+//     }
 
-  } catch (err) {
-    console.error("Erro no login:", err.message);
-    res.status(500).json({ error: "Erro no login", details: err.message });
-  }
-});
+//    catch (err) {
+//     console.error("Erro no login:", err.message);
+//     res.status(500).json({ error: "Erro no login", details: err.message });
+//   }
+
 
 
 
@@ -282,7 +284,7 @@ r.delete("/usuario/:ID_Usuario", async (req, res) => {
 r.get("/usuario/:ID_Usuario", async (req, res) => {
   const { ID_Usuario } = req.params;
   try {
-    console.log("🔎 Buscando usuário ID:", ID_Usuario);
+    console.log(" Buscando usuário ID:", ID_Usuario);
 
     const [rows] = await pool.query(
       "SELECT * FROM Usuario WHERE ID_Usuario = ?",
@@ -966,6 +968,151 @@ r.post("/cadastroUsuario", async (req, res) => {
   } catch (err) {
     console.error("Erro no cadastro:", err);
     res.status(500).json({ error: "Erro no servidor ao cadastrar usuário" });
+  }
+});
+
+
+r.post("/chamados", async (req, res) => {
+  const { Chamado_Criador } = req.body;
+  try {
+    console.log("Buscando chamados do criador ID:", Chamado_Criador);
+    console.log("Chamado_Criador:", Chamado_Criador);
+    console.log("Pool:", typeof pool.query);
+    
+    const [rows] = await pool.query(
+      "SELECT * FROM Chamados WHERE Chamado_Criador = ?",
+      [Chamado_Criador]
+    );
+
+    if (rows.length > 0) {
+      return res.json(rows); // retorna todos os chamados
+    } else {
+      return res.status(404).json({ error: `Nenhum chamado encontrado para o criador ${Chamado_Criador}` });
+    }
+  } catch (err) {
+    console.error("Erro no SELECT:", err.sqlMessage || err.message);
+    return res
+      .status(500)
+      .json({ error: `Erro no servidor ao buscar chamados do criador ${Chamado_Criador}` });
+  }
+});
+
+
+r.post("/AdicionarChamados", async (req, res) => {
+  const { Chamado_Titulo, Mensagem, Chamado_Criador } = req.body;
+
+  if (!Chamado_Titulo || !Mensagem || !Chamado_Criador) {
+    return res.status(400).json({ error: "Campos obrigatórios não preenchidos." });
+  }
+
+  try {
+    // 1️⃣ Cria o chamado na tabela Chamados
+    const [resultChamado] = await pool.query(
+      `INSERT INTO Chamados (Chamado_Titulo, Chamado_Status, Chamado_Criador)
+       VALUES (?, 'Aberto', ?)`,
+      [Chamado_Titulo, Chamado_Criador]
+    );
+
+    const novoIDChamado = resultChamado.insertId;
+
+    // 2️⃣ Cria a primeira mensagem (descrição inicial)
+    await pool.query(
+      `INSERT INTO ChamadosMensagem (ID_Chamado, Mensagem, Remetente)
+       VALUES (?, ?, ?)`,
+      [novoIDChamado, Mensagem, Chamado_Criador]
+    );
+
+    res.status(201).json({
+      message: "Chamado criado com sucesso!",
+      ID_Chamado: novoIDChamado,
+    });
+  } catch (err) {
+    console.error("Erro ao criar chamado:", err);
+    res.status(500).json({ error: "Erro no servidor ao criar chamado." });
+  }
+});
+
+r.delete("/deleteChamado", async (req, res) => {
+  const { ID_Chamado } = req.body;
+console.log(ID_Chamado)
+  if (!ID_Chamado) {
+    return res.status(400).json({ error: "ID do chamado não informado." });
+  }
+
+  try {
+    // Verifica se o chamado existe antes de excluir
+    const [chamadoExiste] = await pool.query(
+      "SELECT * FROM Chamados WHERE ID_Chamado = ?",
+      [ID_Chamado]
+    );
+
+    if (chamadoExiste.length === 0) {
+      return res.status(404).json({ error: "Chamado não encontrado." });
+    }
+
+    // Exclui as mensagens relacionadas primeiro (para manter integridade)
+    await pool.query("DELETE FROM ChamadosMensagem WHERE ID_Chamado = ?", [
+      ID_Chamado,
+    ]);
+
+    // Exclui o chamado
+    await pool.query("DELETE FROM Chamados WHERE ID_Chamado = ?", [
+      ID_Chamado,
+    ]);
+
+    res.status(200).json({ message: "Chamado excluído com sucesso!" });
+  } catch (err) {
+    console.error("Erro ao excluir chamado:", err);
+    res.status(500).json({ error: "Erro no servidor ao excluir chamado." });
+  }
+});
+
+r.post("/getMensagensChamado", async (req, res) => {
+  const { ID_Chamado } = req.body;
+
+  if (!ID_Chamado) {
+    return res.status(400).json({ error: "ID do chamado não informado." });
+  }
+
+  try {
+    const [mensagens] = await pool.query(
+      `SELECT 
+         ID_ChamadosMensagem,
+         ID_Chamado,
+         Mensagem,
+         Remetente,
+         DATE_FORMAT(created_at, '%d/%m/%Y %H:%i') AS DataEnvio
+       FROM ChamadosMensagem
+       WHERE ID_Chamado = ?
+       ORDER BY created_at ASC`,
+      [ID_Chamado]
+    );
+
+    res.status(200).json(mensagens);
+  } catch (err) {
+    console.error("Erro ao buscar mensagens:", err);
+    res.status(500).json({ error: "Erro no servidor ao buscar mensagens." });
+  }
+});
+
+r.post("/enviarMensagem", async (req, res) => {
+  const { ID_Chamado, Remetente, Mensagem } = req.body;
+
+  if (!ID_Chamado || !Remetente || !Mensagem) {
+    return res.status(400).json({ error: "Campos obrigatórios não preenchidos." });
+  }
+
+  try {
+    await pool.query(
+      `INSERT INTO ChamadosMensagem (ID_Chamado, Mensagem, Remetente, created_at)
+       VALUES (?, ?, ?, NOW())`,
+      [ID_Chamado, Mensagem, Remetente]
+    );
+
+    res.status(201).json({ message: "Mensagem enviada com sucesso!" });
+  } catch (err) {
+    console.error("Erro ao enviar mensagem:", err);
+    res.status(500).json({ error: "Erro no servidor ao enviar mensagem." });
   }
 });
 
