@@ -2,7 +2,7 @@ import express from "express";
 import multer from "multer";
 import {alunos, cadastroUsuario, enviarEmailVerificacao, forgotPassword, grupos, login, resetPassword, verificarEmail} from
 './controllers/authController.js'
-import { deleteFromTable, filtrar, getAllUsuarios, importarUsuarios, ordenar, updateUsuarioById, usuarioDeleteById, usuarioGetById } from "./controllers/userController.js";
+import { deleteFromTable, filtrar, getAllUsuarios, importarUsuarios, ordenar,updateUsuarioById, usuarioDeleteById, usuarioGetById, updateAlunoById, alunoGetById, deleteAlunoById, tabelas } from "./controllers/userController.js";
 import { authMiddleware } from './middlewares/authMiddleware.js'
 import { deleteMessagesById, getMessagesById, updateMessagesById, postMessages } from "./controllers/chatController.js";
 
@@ -20,23 +20,31 @@ r.post('/alunos', alunos)
 
 r.post('/grupos', grupos)
 
-r.post('/cadastroUsuario', cadastroUsuario)
+r.post('/cadastroUsuario', authMiddleware, cadastroUsuario)
 
 r.post('/auth/forgotPassword', forgotPassword)
 
-r.put('/auth/resetPassword', authMiddleware, resetPassword)
+r.put('/auth/resetPassword/:token', resetPassword)
 
 r.post('/enviaremail', authMiddleware, enviarEmailVerificacao)
 
-r.get('/verificar',authMiddleware, verificarEmail)
+r.get('/verificar/:token', verificarEmail)
 
-r.get('usuario/:ID_Usuario', authMiddleware, usuarioGetById)
+r.get('/alunos/:ID_Aluno', authMiddleware, alunoGetById)
 
-r.delete('usuario/:ID_Usuario', authMiddleware, usuarioDeleteById)
+r.put('/alunos/:ID_Aluno', authMiddleware, updateAlunoById)
+
+r.delete('/alunos', authMiddleware, deleteAlunoById)
+
+r.get('/usuario/:ID_Usuario', authMiddleware, usuarioGetById)
+
+r.post('/tabela', authMiddleware, tabelas)
+
+r.delete('/usuario', authMiddleware, usuarioDeleteById)
 
 r.put('/usuario/:ID_Usuario', authMiddleware, updateUsuarioById)
 
-r.get('/usuarios', authMiddleware, getAllUsuarios)
+r.post('/usuarios', authMiddleware, getAllUsuarios)
 
 r.delete('/deleteFromTable', authMiddleware, deleteFromTable)
 

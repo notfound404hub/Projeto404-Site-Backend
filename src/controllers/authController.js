@@ -25,12 +25,11 @@ export const login = async (req, res) => {
         const ok = await bcrypt.compare(senha, user.Aluno_Senha)
         if (!ok) return res.status(401).json({ error: "Credenciais inválidas" })
 
-        const { token } = createToken({ id: user.ID_Aluno })
+        const {token} = createToken({ id: user.ID_Aluno })
 
         const verificado = user.Verificado
 
-        const verifyLink = `${process.env.FRONTEND_URL}/verificar/${token}`
-        return res.status(200).json({ msg: "Login concluído!", token, verifyLink, verificado })
+        return res.status(200).json({ msg: "Login concluído!", token, verificado })
 
     } catch (err) {
         console.error("login error:", err)
@@ -93,8 +92,8 @@ export const cadastroUsuario = async (req, res) => {
             });
         }
 
-        const [emailExists] = await pool.query(
-            "SELECT * FROM Usuario WHERE Usuario_Email = ?",
+        const [emailExists] = await db.query(
+            `SELECT * FROM ${tabela} WHERE Usuario_Email = ?`,
             [email]
         );
 
@@ -105,8 +104,8 @@ export const cadastroUsuario = async (req, res) => {
         }
 
         if (cpfCnpj) {
-            const [cpfExists] = await pool.query(
-                "SELECT * FROM Usuario WHERE Usuario_CPF = ?",
+            const [cpfExists] = await db.query(
+                `SELECT * FROM ${tabela} WHERE Usuario_CPF = ?`,
                 [cpfCnpj]
             );
 
@@ -117,8 +116,8 @@ export const cadastroUsuario = async (req, res) => {
             }
         }
 
-        const [result] = await pool.query(
-            `INSERT INTO Usuario
+        const [result] = await db.query(
+            `INSERT INTO ${tabela}
       (Usuario_Nome, Usuario_Empresa, Usuario_CPF, Usuario_Email, Usuario_Telefone, Usuario_Senha) 
       VALUES (?, ?, ?, ?, ?, ?)`,
             [nome, empresa || null, cpfCnpj || null, email, telefone || null, hashed]
@@ -188,6 +187,7 @@ export const forgotPassword = async (req, res) => {
 }
 
 export const resetPassword = async (req, res) => {
+    const {token} = req.params    
     const { senha, confirmarSenha } = req.body
 
     if (!senha || !confirmarSenha) return res.status(400).json({ error: "Preencha todos os campos" })
@@ -195,7 +195,9 @@ export const resetPassword = async (req, res) => {
     if (senha != confirmarSenha) return res.status(409).json({ error: "As senhas devem ser iguais" })
 
     try {
-        const userId = req.user.id
+        console.log(req.body)
+        const decoded = await verifyToken(token)
+        const userId = decoded.id
 
         const hashed = await bcrypt.hash(senha, 10)
         await db.query("UPDATE Aluno SET Aluno_Senha = ? WHERE ID_Aluno = ?", [hashed, userId])
@@ -241,8 +243,10 @@ export const enviarEmailVerificacao = async (req, res) => {
 }
 
 export const verificarEmail = async (req, res) => {
+    const {token} = req.params
     try {
-        const userId = req.user.id
+        const decoded = await verifyToken(token)
+        const userId = decoded.id
 
         await db.query("UPDATE Aluno SET Verificado = ? WHERE ID_Aluno = ?", [true, userId])
 

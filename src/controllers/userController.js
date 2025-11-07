@@ -4,16 +4,17 @@ import { createToken, denyToken, verifyToken } from '../services/tokenService.js
 import dotenv from "dotenv";
 import xlsx from "xlsx";
 
-
-export const tabelas =  async (req, res) => {
-  const { teste } = req.body;
-  console.log(teste[1]);
+export const tabelas = async (req, res) => {
+  const {teste} = req.body;
+  console.log(req.body)
   try {
-    const { id } = req.query;
-    let query = `SELECT * FROM ${teste}`;
-    console.log(query);
+    let tabela = teste.trim()
+    const tabelasPermitidas = ["Usuario"];
+    if (!tabelasPermitidas.includes(tabela)) {
+      return res.status(400).json({ error: "Tabela inválida" });
+    }
 
-    const [rows] = await pool.query(query);
+    const [rows] = await db.query(`SELECT * FROM ??`, [tabela]);
 
     res.json(rows);
   } catch (error) {
@@ -28,7 +29,7 @@ export const usuarioGetById = async (req, res) => {
   try {
     console.log("Buscando usuário ID:", ID_Usuario);
 
-    const [rows] = await pool.query(
+    const [rows] = await db.query(
       "SELECT * FROM Usuario WHERE ID_Usuario = ?",
       [ID_Usuario]
     );
@@ -46,20 +47,122 @@ export const usuarioGetById = async (req, res) => {
   }
 }
 
-export const usuarioDeleteById = async (req, res) => {
-  try {
-    const { ID_Usuario } = req.params;
+export const alunoGetById = async (req, res) => {
 
-    const [rows] = await pool.query(
-      "SELECT * FROM Usuario WHERE ID_Usuario = ?",
-      [ID_Usuario]
+  const { ID_Aluno } = req.params;
+  try {
+    console.log("Buscando aluno ID:", ID_Aluno);
+
+    const [rows] = await db.query(
+      "SELECT * FROM Aluno WHERE ID_Aluno = ?",
+      [ID_Aluno]
+    );
+
+    if (rows.length > 0) {
+      return res.json({ msg: "Aluno encontrado com sucesso", rows });
+    } else {
+      return res.status(404).json({ error: "Aluno não encontrado" });
+    }
+  } catch (err) {
+    console.error("Erro no SELECT:", err.sqlMessage || err.message);
+    return res
+      .status(500)
+      .json({ error: "Erro no servidor ao buscar usuário" });
+  }
+}
+
+export const updateAlunoById = async (req, res) => {
+  try {
+    console.log("Requisição recebida para atualizar usuário.");
+
+    const { ID_Aluno } = req.params;
+    const { Aluno_Nome, Aluno_Telefone, Aluno_Senha } =
+      req.body;
+
+    console.log("Dados recebidos no body:", req.body);
+    console.log("ID recebido nos parâmetros:", ID_Aluno);
+
+    if (!ID_Aluno) {
+      console.log("ID do usuário não informado.");
+      return res.status(400).json({ error: "ID do usuário não informado" });
+    }
+    if (req.body.Aluno_Email || req.body.Aluno_CPF || req.body.created_at) {
+      console.log(
+        "Tentativa de alterar campo protegido (Email, CPF ou created_at)."
+      );
+      return res.status(400).json({
+        error: "Não é permitido alterar Email, CPF/CNPJ ou data de criação",
+      });
+    }
+
+    console.log(req.body)
+
+    console.log("Executando UPDATE no banco de dados...");
+
+    const [result] = await db.query(
+      `UPDATE Aluno 
+       SET 
+         Aluno_Nome = ?, 
+         Aluno_Telefone = ?, 
+         Aluno_Senha = ?
+       WHERE ID_Aluno = ?`,
+      [
+        Aluno_Nome,
+        Aluno_Telefone,
+        Aluno_Senha,
+        ID_Aluno,
+      ]
+    );
+
+    console.log("Query executada com sucesso!");
+    console.log(" Resultado do MySQL:", result);
+
+    res.status(200).json({ msg: "Usuário atualizado com sucesso!" });
+  } catch (err) {
+    console.error("Erro no UPDATE:", err.sqlMessage || err.message);
+    res.status(500).json({ error: "Erro no servidor ao atualizar usuário" });
+  }
+};
+
+export const deleteAlunoById = async (req, res) => {
+  try {
+    const { ids, tabela } = req.body;
+
+    console.log(ids)
+
+    const [rows] = await db.query(
+      "SELECT * FROM Aluno WHERE ID_Aluno IN (?)",
+      [ids]
     );
 
     if (rows.length === 0) {
       return res.status(404).json({ error: "Usuário não encontrado" });
     }
 
-    await pool.query("DELETE FROM Usuario WHERE ID_Usuario = ?", [ID_Usuario]);
+    await db.query(`DELETE FROM mensagens WHERE idRemetente IN (?)`, [ids]);
+    await db.query(`DELETE FROM ${tabela} WHERE ID_Aluno IN (?)`, [ids]);
+
+    return res.status(200).json({ msg: "Conta deletada com sucesso" });
+  } catch (err) {
+    console.error("Erro ao deletar conta:", err);
+    res.status(500).json({ error: "Erro no servidor ao deletar conta" });
+  }
+}
+
+export const usuarioDeleteById = async (req, res) => {
+  const { ids, tabela } = req.body;
+  try {
+    console.log(ids)
+    const [rows] = await db.query(
+      `SELECT * FROM ${tabela} WHERE ID_Usuario IN (?)`,
+      [ids]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: "Usuário não encontrado" });
+    }
+
+    await db.query(`DELETE FROM ${tabela} WHERE ID_Usuario IN (?)`, [ids]);
 
     return res.status(200).json({ msg: "Conta deletada com sucesso" });
   } catch (err) {
@@ -76,7 +179,7 @@ export const getAllUsuarios = async (req, res) => {
     let query = `SELECT * FROM ${teste}`;
     console.log(query);
 
-    const [rows] = await pool.query(query);
+    const [rows] = await db.query(query);
 
     res.json(rows);
   } catch (error) {
