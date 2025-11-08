@@ -2,7 +2,7 @@ import express from "express";
 import multer from "multer";
 import {alunos, cadastroUsuario, enviarEmailVerificacao, forgotPassword, grupos, login, resetPassword, verificarEmail} from
 './controllers/authController.js'
-import { deleteFromTable, filtrar, getAllUsuarios, importarUsuarios, ordenar,updateUsuarioById, usuarioDeleteById, usuarioGetById, updateAlunoById, alunoGetById, deleteAlunoById, tabelas } from "./controllers/userController.js";
+import { deleteFromTable, filtrar, getAllUsuarios, importarUsuarios, ordenar,updateUsuarioById, usuarioDeleteById, usuarioGetById, updateAlunoById, alunoGetById, deleteAlunoById, tabelas, getCampanhas, updateCampanhaById, AlimentosGetById } from "./controllers/userController.js";
 import { authMiddleware } from './middlewares/authMiddleware.js'
 import { deleteMessagesById, getMessagesById, updateMessagesById, postMessages } from "./controllers/chatController.js";
 
@@ -52,7 +52,7 @@ r.post('/filtrar', authMiddleware, filtrar)
 
 r.post('/ordenar', authMiddleware, ordenar)
 
-r.post('/importarusuarios', authMiddleware, importarUsuarios, upload.single("file"))
+r.post('/importarUsuarios', authMiddleware, upload.single("file"), importarUsuarios )
 
 r.get('/messages/:userId', authMiddleware, getMessagesById)
 
@@ -61,6 +61,14 @@ r.post('/messages', authMiddleware, postMessages)
 r.put('/messages/:id', authMiddleware, updateMessagesById)
 
 r.delete('/messages/:id', authMiddleware, deleteMessagesById)
+
+r.get("/campanhas/:ID_Campanha", authMiddleware, getCampanhas)
+
+r.put("/campanhas/:ID_Campanha", authMiddleware, updateCampanhaById)
+
+r.get("/alimentos/:ID_Alimento", authMiddleware, AlimentosGetById)
+
+
 
 // r.post("/login", async (req, res) => {
 //   try {
@@ -382,6 +390,150 @@ r.post("/importarCampanha", upload.single("file"), async (req, res) => {
   } catch (err) {
     console.error("❌ Erro ao processar arquivo Excel:", err);
     res.status(500).json({ error: "Erro ao processar arquivo Excel." });
+  }
+});
+
+r.post("/chamados", async (req, res) => {
+  const { Chamado_Criador } = req.body;
+  try {
+    console.log("Buscando chamados do criador ID:", Chamado_Criador);
+    console.log("Chamado_Criador:", Chamado_Criador);
+    console.log("Pool:", typeof pool.query);
+    
+    const [rows] = await pool.query(
+      "SELECT * FROM Chamados WHERE Chamado_Criador = ?",
+      [Chamado_Criador]
+    );
+
+    if (rows.length > 0) {
+      return res.json(rows); // retorna todos os chamados
+    } else {
+      return res.status(404).json({ error: `Nenhum chamado encontrado para o criador ${Chamado_Criador}` });
+    }
+  } catch (err) {
+    console.error("Erro no SELECT:", err.sqlMessage || err.message);
+    return res
+      .status(500)
+      .json({ error: `Erro no servidor ao buscar chamados do criador ${Chamado_Criador}` });
+  }
+});
+
+
+r.post("/AdicionarChamados", async (req, res) => {
+  const { Chamado_Titulo, Mensagem, Chamado_Criador } = req.body;
+
+  if (!Chamado_Titulo || !Mensagem || !Chamado_Criador) {
+    return res.status(400).json({ error: "Campos obrigatórios não preenchidos." });
+  }
+
+  try {
+    // 1️⃣ Cria o chamado na tabela Chamados
+    const [resultChamado] = await pool.query(
+      `INSERT INTO Chamados (Chamado_Titulo, Chamado_Status, Chamado_Criador)
+       VALUES (?, 'Aberto', ?)`,
+      [Chamado_Titulo, Chamado_Criador]
+    );
+
+    const novoIDChamado = resultChamado.insertId;
+
+    // 2️⃣ Cria a primeira mensagem (descrição inicial)
+    await pool.query(
+      `INSERT INTO ChamadosMensagem (ID_Chamado, Mensagem, Remetente)
+       VALUES (?, ?, ?)`,
+      [novoIDChamado, Mensagem, Chamado_Criador]
+    );
+
+    res.status(201).json({
+      message: "Chamado criado com sucesso!",
+      ID_Chamado: novoIDChamado,
+    });
+  } catch (err) {
+    console.error("Erro ao criar chamado:", err);
+    res.status(500).json({ error: "Erro no servidor ao criar chamado." });
+  }
+});
+
+r.delete("/deleteChamado", async (req, res) => {
+  const { ID_Chamado } = req.body;
+console.log(ID_Chamado)
+  if (!ID_Chamado) {
+    return res.status(400).json({ error: "ID do chamado não informado." });
+  }
+
+  try {
+    // Verifica se o chamado existe antes de excluir
+    const [chamadoExiste] = await pool.query(
+      "SELECT * FROM Chamados WHERE ID_Chamado = ?",
+      [ID_Chamado]
+    );
+
+    if (chamadoExiste.length === 0) {
+      return res.status(404).json({ error: "Chamado não encontrado." });
+    }
+
+    // Exclui as mensagens relacionadas primeiro (para manter integridade)
+    await pool.query("DELETE FROM ChamadosMensagem WHERE ID_Chamado = ?", [
+      ID_Chamado,
+    ]);
+
+    // Exclui o chamado
+    await pool.query("DELETE FROM Chamados WHERE ID_Chamado = ?", [
+      ID_Chamado,
+    ]);
+
+    res.status(200).json({ message: "Chamado excluído com sucesso!" });
+  } catch (err) {
+    console.error("Erro ao excluir chamado:", err);
+    res.status(500).json({ error: "Erro no servidor ao excluir chamado." });
+  }
+});
+
+r.post("/getMensagensChamado", async (req, res) => {
+  const { ID_Chamado } = req.body;
+
+  if (!ID_Chamado) {
+    return res.status(400).json({ error: "ID do chamado não informado." });
+  }
+
+  try {
+    const [mensagens] = await pool.query(
+      `SELECT 
+         ID_ChamadosMensagem,
+         ID_Chamado,
+         Mensagem,
+         Remetente,
+         DATE_FORMAT(created_at, '%d/%m/%Y %H:%i') AS DataEnvio
+       FROM ChamadosMensagem
+       WHERE ID_Chamado = ?
+       ORDER BY created_at ASC`,
+      [ID_Chamado]
+    );
+
+    res.status(200).json(mensagens);
+  } catch (err) {
+    console.error("Erro ao buscar mensagens:", err);
+    res.status(500).json({ error: "Erro no servidor ao buscar mensagens." });
+  }
+});
+
+r.post("/enviarMensagem", async (req, res) => {
+  const { ID_Chamado, Remetente, Mensagem } = req.body;
+
+  if (!ID_Chamado || !Remetente || !Mensagem) {
+    return res.status(400).json({ error: "Campos obrigatórios não preenchidos." });
+  }
+
+  try {
+    await pool.query(
+      `INSERT INTO ChamadosMensagem (ID_Chamado, Mensagem, Remetente, created_at)
+       VALUES (?, ?, ?, NOW())`,
+      [ID_Chamado, Mensagem, Remetente]
+    );
+
+    res.status(201).json({ message: "Mensagem enviada com sucesso!" });
+  } catch (err) {
+    console.error("Erro ao enviar mensagem:", err);
+    res.status(500).json({ error: "Erro no servidor ao enviar mensagem." });
   }
 });
 

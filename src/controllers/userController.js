@@ -9,7 +9,7 @@ export const tabelas = async (req, res) => {
   console.log(req.body)
   try {
     let tabela = teste.trim()
-    const tabelasPermitidas = ["Usuario"];
+    const tabelasPermitidas = ["Usuario", "Campanha", "Alimentos"];
     if (!tabelasPermitidas.includes(tabela)) {
       return res.status(400).json({ error: "Tabela inválida" });
     }
@@ -275,7 +275,7 @@ export const deleteFromTable = async (req, res) => {
 
     const query = `DELETE FROM ${tabela} WHERE ID_${tabela} IN (${placeholders})`;
 
-    const [result] = await pool.query(query, ids);
+    const [result] = await db.query(query, ids);
 
     if (result.affectedRows === 0) {
       return res
@@ -408,7 +408,7 @@ export const importarUsuarios = async (req, res) => {
       return res.status(400).json({ error: "Planilha vazia ou inválida." });
     }
 
-    const connection = await pool.getConnection();
+    const connection = await db.getConnection();
     const inseridos = [];
     const atualizados = [];
     const ignorados = [];
@@ -510,6 +510,29 @@ export const importarUsuarios = async (req, res) => {
   }
 };
 
+export const getCampanhas = async (req, res) => {
+  const { ID_Campanha } = req.params;
+  try {
+    console.log("Buscando Campanha ID:", ID_Campanha);
+
+    const [rows] = await db.query(
+      "SELECT * FROM Campanha WHERE ID_Campanha = ?",
+      [ID_Campanha]
+    );
+
+    if (rows.length > 0) {
+      return res.json(rows[0]);
+    } else {
+      return res.status(404).json({ error: "Campanha não encontrado" });
+    }
+  } catch (err) {
+    console.error("Erro no SELECT:", err.sqlMessage || err.message);
+    return res
+      .status(500)
+      .json({ error: "Erro no servidor ao buscar Campanha" });
+  }
+};
+
 export const updateCampanhaById = async (req, res) => {
   try {
     console.log("Requisição recebida para atualizar campanha.");
@@ -541,7 +564,7 @@ export const updateCampanhaById = async (req, res) => {
 
     console.log("Executando UPDATE no banco...");
 
-    const [result] = await pool.query(
+    const [result] = await db.query(
       `UPDATE Campanha
        SET 
          Campanha_Nome = ?,
@@ -754,4 +777,28 @@ export const importarCampanha = async (req, res) => {
   }
 };
 
+
+export const AlimentosGetById = async (req, res) => {
+
+  const { ID_Alimento } = req.params;
+  try {
+    console.log("Buscando aluno ID:", ID_Alimento);
+
+    const [rows] = await db.query(
+      "SELECT * FROM Alimentos WHERE ID_Alimento = ?",
+      [ID_Alimento]
+    );
+
+    if (rows.length > 0) {
+      return res.json({ msg: "Alimentos encontrados com sucesso", rows });
+    } else {
+      return res.status(404).json({ error: "Alimento não encontrado" });
+    }
+  } catch (err) {
+    console.error("Erro no SELECT:", err.sqlMessage || err.message);
+    return res
+      .status(500)
+      .json({ error: "Erro no servidor ao buscar alimento" });
+  }
+}
 
