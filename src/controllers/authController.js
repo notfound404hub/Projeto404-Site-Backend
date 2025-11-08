@@ -14,28 +14,54 @@ const sanitizeGrupo = (u) => ({ grupoId: ID_Grupo, grupoNome: u.Grupo_Nome, grup
 
 
 export const login = async (req, res) => {
-    const { email, senha } = req.body
-    if (!email || !senha) return res.status(400).json({ error: "Preencha todos os campos" })
-
+    const { email, senha } = req.body;
+    if (!email || !senha)
+      return res.status(400).json({ error: "Preencha todos os campos" });
+  
     try {
-        const [rows] = await db.query("SELECT * FROM Aluno WHERE Aluno_Email = ?", [email])
-        if (!rows.length) return res.status(401).json({ error: "Credenciais inválidas" })
-
-        const user = rows[0]
+      const [rowsAluno] = await db.query(
+        "SELECT * FROM Aluno WHERE Aluno_Email = ?",
+        [email]
+      );
+      const [rowsUsuario] = await db.query(
+        "SELECT * FROM Usuario WHERE Usuario_Email = ?",
+        [email]
+      );
+  
+      let user, tipo;
+  
+      if (rowsAluno.length > 0) {
+        user = rowsAluno[0];
+        tipo = "Aluno";
         // const ok = await bcrypt.compare(senha, user.Aluno_Senha)
         // if (!ok) return res.status(401).json({ error: "Credenciais inválidas" })
-
-        const {token} = createToken({ id: user.ID_Aluno })
-
-        const verificado = user.Verificado
-
-        return res.status(200).json({ msg: "Login concluído!", token, verificado })
-
+      } else if (rowsUsuario.length > 0) {
+        user = rowsUsuario[0];
+        tipo = "Usuario";
+        // const ok = await bcrypt.compare(senha, user.Usuario_Senha)
+        // if (!ok) return res.status(401).json({ error: "Credenciais inválidas" })
+      } else {
+        return res.status(401).json({ error: "Credenciais inválidas" });
+      }
+  
+      const { token } = createToken({ id: user.ID_Aluno || user.ID_Usuario });
+      const verificado = user.Verificado;
+  
+      return res.status(200).json({
+        msg: "Login concluído!",
+        token,
+        verificado,
+        tipo,
+        ID: user.ID_Aluno || user.ID_Usuario,
+        nome: user.Aluno_Nome || user.Usuario_Nome,
+        email: user.Aluno_Email || user.Usuario_Email,
+      });
     } catch (err) {
-        console.error("login error:", err)
-        return res.status(500).json({ error: "Erro no login" })
+      console.error("login error:", err);
+      return res.status(500).json({ error: "Erro no login" });
     }
-}
+  };
+  
 
 export const alunos = async (req, res) => {
     try {

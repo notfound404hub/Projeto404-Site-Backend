@@ -1,14 +1,18 @@
-import db from '../db.js'
-import bcrypt from 'bcrypt'
-import { createToken, denyToken, verifyToken } from '../services/tokenService.js'
+import db from "../db.js";
+import bcrypt from "bcrypt";
+import {
+  createToken,
+  denyToken,
+  verifyToken,
+} from "../services/tokenService.js";
 import dotenv from "dotenv";
 import xlsx from "xlsx";
 
 export const tabelas = async (req, res) => {
   const { teste } = req.body;
-  console.log(req.body)
+  console.log(req.body);
   try {
-    let tabela = teste.trim()
+    let tabela = teste.trim();
     const tabelasPermitidas = ["Usuario", "Campanha", "Alimentos"];
     if (!tabelasPermitidas.includes(tabela)) {
       return res.status(400).json({ error: "Tabela inválida" });
@@ -24,7 +28,6 @@ export const tabelas = async (req, res) => {
 };
 
 export const usuarioGetById = async (req, res) => {
-
   const { ID_Usuario } = req.params;
   try {
     console.log("Buscando usuário ID:", ID_Usuario);
@@ -45,18 +48,16 @@ export const usuarioGetById = async (req, res) => {
       .status(500)
       .json({ error: "Erro no servidor ao buscar usuário" });
   }
-}
+};
 
 export const alunoGetById = async (req, res) => {
-
   const { ID_Aluno } = req.params;
   try {
     console.log("Buscando aluno ID:", ID_Aluno);
 
-    const [rows] = await db.query(
-      "SELECT * FROM Aluno WHERE ID_Aluno = ?",
-      [ID_Aluno]
-    );
+    const [rows] = await db.query("SELECT * FROM Aluno WHERE ID_Aluno = ?", [
+      ID_Aluno,
+    ]);
 
     if (rows.length > 0) {
       return res.json({ msg: "Aluno encontrado com sucesso", rows });
@@ -69,15 +70,14 @@ export const alunoGetById = async (req, res) => {
       .status(500)
       .json({ error: "Erro no servidor ao buscar usuário" });
   }
-}
+};
 
 export const updateAlunoById = async (req, res) => {
   try {
     console.log("Requisição recebida para atualizar usuário.");
 
     const { ID_Aluno } = req.params;
-    const { Aluno_Nome, Aluno_Telefone, Aluno_Senha } =
-      req.body;
+    const { Aluno_Nome, Aluno_Telefone, Aluno_Senha } = req.body;
 
     console.log("Dados recebidos no body:", req.body);
     console.log("ID recebido nos parâmetros:", ID_Aluno);
@@ -95,7 +95,7 @@ export const updateAlunoById = async (req, res) => {
       });
     }
 
-    console.log(req.body)
+    console.log(req.body);
 
     console.log("Executando UPDATE no banco de dados...");
 
@@ -106,12 +106,7 @@ export const updateAlunoById = async (req, res) => {
          Aluno_Telefone = ?, 
          Aluno_Senha = ?
        WHERE ID_Aluno = ?`,
-      [
-        Aluno_Nome,
-        Aluno_Telefone,
-        Aluno_Senha,
-        ID_Aluno,
-      ]
+      [Aluno_Nome, Aluno_Telefone, Aluno_Senha, ID_Aluno]
     );
 
     console.log("Query executada com sucesso!");
@@ -128,12 +123,11 @@ export const deleteAlunoById = async (req, res) => {
   try {
     const { ids, tabela } = req.body;
 
-    console.log(ids)
+    console.log(ids);
 
-    const [rows] = await db.query(
-      "SELECT * FROM Aluno WHERE ID_Aluno IN (?)",
-      [ids]
-    );
+    const [rows] = await db.query("SELECT * FROM Aluno WHERE ID_Aluno IN (?)", [
+      ids,
+    ]);
 
     if (rows.length === 0) {
       return res.status(404).json({ error: "Usuário não encontrado" });
@@ -147,12 +141,12 @@ export const deleteAlunoById = async (req, res) => {
     console.error("Erro ao deletar conta:", err);
     res.status(500).json({ error: "Erro no servidor ao deletar conta" });
   }
-}
+};
 
 export const usuarioDeleteById = async (req, res) => {
   const { ids, tabela } = req.body;
   try {
-    console.log(ids)
+    console.log(ids);
     const [rows] = await db.query(
       `SELECT * FROM ${tabela} WHERE ID_Usuario IN (?)`,
       [ids]
@@ -169,7 +163,7 @@ export const usuarioDeleteById = async (req, res) => {
     console.error("Erro ao deletar conta:", err);
     res.status(500).json({ error: "Erro no servidor ao deletar conta" });
   }
-}
+};
 
 export const updateUsuarioById = async (req, res) => {
   try {
@@ -224,7 +218,6 @@ export const updateUsuarioById = async (req, res) => {
   }
 };
 
-
 export const getAllUsuarios = async (req, res) => {
   const { teste } = req.body;
   console.log(teste[1]);
@@ -256,14 +249,12 @@ export const deleteFromTable = async (req, res) => {
     }
 
     if (!tabela) {
-      return res
-        .status(400)
-        .json({ error: "Nome da tabela não informado." });
+      return res.status(400).json({ error: "Nome da tabela não informado." });
     }
 
     const tabelasPermitidas = ["Campanha", "Usuario", "Mentor", "Aluno"];
     if (!tabelasPermitidas.includes(tabela.trim())) {
-      console.log(`A tabela é ${tabela}`)
+      console.log(`A tabela é ${tabela}`);
       return res
         .status(400)
         .json({ error: "Tabela não permitida para exclusão." });
@@ -290,7 +281,7 @@ export const deleteFromTable = async (req, res) => {
     console.error("Erro ao excluir itens:", err);
     res.status(500).json({ error: "Erro no servidor ao excluir itens." });
   }
-}
+};
 
 export const filtrar = async (req, res) => {
   try {
@@ -298,9 +289,10 @@ export const filtrar = async (req, res) => {
     console.log("Filtros recebidos:", filtros);
     console.log("Tabela recebida:", tabela);
 
-    const tabelaLimpa = tabela?.trim()
-    const tabelasPermitidas = ["Usuario", "Aluno"]
-    if(!tabelasPermitidas.includes(tabelaLimpa)) return res.status(400).json({error:"Tabela inválida"})
+    const tabelaLimpa = tabela?.trim();
+    const tabelasPermitidas = ["Usuario", "Aluno"];
+    if (!tabelasPermitidas.includes(tabelaLimpa))
+      return res.status(400).json({ error: "Tabela inválida" });
 
     if (!filtros || !Array.isArray(filtros) || filtros.length === 0) {
       const [rows] = await db.query(`SELECT * FROM ${tabela}`);
@@ -346,7 +338,7 @@ export const filtrar = async (req, res) => {
 
     const query = `SELECT * FROM ${tabela} ${whereClause}`;
     console.log("Query final:", query);
-    
+
     const [rows] = await db.query(query, values);
 
     res.json(rows);
@@ -354,7 +346,7 @@ export const filtrar = async (req, res) => {
     console.error(`Erro ao filtrar ${req.body.tabela}:`, error);
     res.status(500).json({ error: `Erro ao filtrar ${req.body.tabela}` });
   }
-}
+};
 
 export const ordenar = async (req, res) => {
   try {
@@ -378,7 +370,7 @@ export const ordenar = async (req, res) => {
 
     const query = `SELECT * FROM ${tabela} ORDER BY ${campo} ${orderType}`;
     console.log(query);
-    const [rows] = await pool.query(query);
+    const [rows] = await db.query(query);
     console.log(direcao);
     res.json(rows);
   } catch (error) {
@@ -556,7 +548,9 @@ export const updateCampanhaById = async (req, res) => {
     }
 
     if (Campanha_Grupo || Campanha_Quantidade) {
-      console.log("Tentativa de alterar campo protegido (Grupo ou Quantidade).");
+      console.log(
+        "Tentativa de alterar campo protegido (Grupo ou Quantidade)."
+      );
       return res.status(400).json({
         error: "Não é permitido alterar o Grupo ou a Quantidade.",
       });
@@ -573,13 +567,7 @@ export const updateCampanhaById = async (req, res) => {
         
          finish_at = ?
        WHERE ID_Campanha = ?`,
-      [
-        Campanha_Nome,
-        Campanha_Local,
-        Campanha_Meta,
-        finish_at,
-        ID_Campanha,
-      ]
+      [Campanha_Nome, Campanha_Local, Campanha_Meta, finish_at, ID_Campanha]
     );
 
     if (result.affectedRows === 0) {
@@ -640,7 +628,7 @@ export const importarCampanha = async (req, res) => {
       return `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`;
     };
 
-    const connection = await pool.getConnection();
+    const connection = await db.getConnection();
     const inseridos = [];
     const atualizados = [];
     const ignorados = [];
@@ -650,14 +638,18 @@ export const importarCampanha = async (req, res) => {
 
       for (const row of dados) {
         // normaliza nomes de colunas (se vierem com espaços ou minúsculas, adapte aqui)
-        const Campanha_Nome = row.Campanha_Nome || row["Campanha Nome"] || row.nome || null;
+        const Campanha_Nome =
+          row.Campanha_Nome || row["Campanha Nome"] || row.nome || null;
         const Campanha_Local = row.Campanha_Local || row.Local || null;
         const Campanha_Grupo = row.Campanha_Grupo || row.Grupo || null;
         const Campanha_Meta = toNumberSafe(row.Campanha_Meta ?? row.Meta);
-        const Campanha_Quantidade = Number.isFinite(Number(row.Campanha_Quantidade))
+        const Campanha_Quantidade = Number.isFinite(
+          Number(row.Campanha_Quantidade)
+        )
           ? parseInt(row.Campanha_Quantidade, 10)
           : toNumberSafe(row.Campanha_Quantidade) || null;
-        const finish_at_raw = row.finish_at || row["Finish At"] || row["Acaba em"] || null;
+        const finish_at_raw =
+          row.finish_at || row["Finish At"] || row["Acaba em"] || null;
 
         if (!Campanha_Nome) {
           console.log(" Ignorando linha sem nome de campanha:", row);
@@ -680,8 +672,13 @@ export const importarCampanha = async (req, res) => {
           const atualLocal = atual.Campanha_Local ?? null;
           const atualGrupo = atual.Campanha_Grupo ?? null;
           const atualMeta = toNumberSafe(atual.Campanha_Meta);
-          const atualQuantidade = atual.Campanha_Quantidade != null ? Number(atual.Campanha_Quantidade) : null;
-          const atualFinishDate = atual.finish_at ? new Date(atual.finish_at) : null;
+          const atualQuantidade =
+            atual.Campanha_Quantidade != null
+              ? Number(atual.Campanha_Quantidade)
+              : null;
+          const atualFinishDate = atual.finish_at
+            ? new Date(atual.finish_at)
+            : null;
 
           // compara robustamente:
           const mudouLocal = (atualLocal || "") !== (Campanha_Local || "");
@@ -689,20 +686,32 @@ export const importarCampanha = async (req, res) => {
           const mudouMeta =
             (atualMeta === null && Campanha_Meta !== null) ||
             (atualMeta !== null && Campanha_Meta === null) ||
-            (atualMeta !== null && Campanha_Meta !== null && Number(atualMeta) !== Number(Campanha_Meta));
+            (atualMeta !== null &&
+              Campanha_Meta !== null &&
+              Number(atualMeta) !== Number(Campanha_Meta));
           const mudouQuantidade =
             (atualQuantidade === null && Campanha_Quantidade !== null) ||
             (atualQuantidade !== null && Campanha_Quantidade === null) ||
-            (atualQuantidade !== null && Campanha_Quantidade !== null && Number(atualQuantidade) !== Number(Campanha_Quantidade));
+            (atualQuantidade !== null &&
+              Campanha_Quantidade !== null &&
+              Number(atualQuantidade) !== Number(Campanha_Quantidade));
 
           let mudouFinish = false;
-          if (atualFinishDate === null && newFinishDate !== null) mudouFinish = true;
-          else if (atualFinishDate !== null && newFinishDate === null) mudouFinish = true;
+          if (atualFinishDate === null && newFinishDate !== null)
+            mudouFinish = true;
+          else if (atualFinishDate !== null && newFinishDate === null)
+            mudouFinish = true;
           else if (atualFinishDate !== null && newFinishDate !== null) {
-            if (atualFinishDate.getTime() !== newFinishDate.getTime()) mudouFinish = true;
+            if (atualFinishDate.getTime() !== newFinishDate.getTime())
+              mudouFinish = true;
           }
 
-          const mudou = mudouLocal || mudouGrupo || mudouMeta || mudouQuantidade || mudouFinish;
+          const mudou =
+            mudouLocal ||
+            mudouGrupo ||
+            mudouMeta ||
+            mudouQuantidade ||
+            mudouFinish;
 
           if (mudou) {
             console.log(` Atualizando campanha: ${Campanha_Nome}`);
@@ -777,171 +786,230 @@ export const importarCampanha = async (req, res) => {
   }
 };
 
+export const cadastroAlimento = async (req, res) => {
+  const { Alimento_Cod, Alimento_Nome, Alimento_Marca, Alimento_Peso } = req.body;
+
+  if (!Alimento_Cod || !Alimento_Nome || !Alimento_Marca || !Alimento_Peso) {
+    return res.status(400).json({ error: "Campos obrigatórios não preenchidos." });
+  }
+
+  try {
+    // Inserir na tabela de produtos fixos (catálogo)
+    await db.query(
+      "INSERT INTO codAlimentos (Alimento_Cod, Alimento_Nome, Alimento_Marca, Alimento_Peso) VALUES (?, ?, ?, ?)",
+      [Alimento_Cod, Alimento_Nome, Alimento_Marca, Alimento_Peso]
+    );
+
+    res.json({ msg: "Alimento cadastrado com sucesso!" });
+  } catch (err) {
+    console.error("Erro ao cadastrar alimento:", err);
+    res.status(500).json({ error: "Erro ao cadastrar alimento." });
+  }
+};
 
 export const AlimentosGetById = async (req, res) => {
-
   const { ID_Alimento } = req.params;
+
   try {
-    console.log("Buscando aluno ID:", ID_Alimento);
+    console.log("Buscando alimento EAN:", ID_Alimento);
 
     const [rows] = await db.query(
-      "SELECT * FROM Alimentos WHERE ID_Alimento = ?",
+      "SELECT * FROM codAlimentos WHERE Alimento_Cod = ?",
       [ID_Alimento]
     );
 
     if (rows.length > 0) {
-      return res.json({ msg: "Alimentos encontrados com sucesso", rows });
+      // Retorna o primeiro alimento diretamente
+      return res.json(rows[0]);
     } else {
-      return res.status(404).json({ error: "Alimento não encontrado" });
+      return res.status(404).json({ error: "Alimento não encontrado." });
+    }
+  } catch (err) {
+    console.error("Erro ao buscar alimento:", err.sqlMessage || err.message);
+    return res.status(500).json({ error: "Erro no servidor ao buscar alimento." });
+  }
+};
+
+
+export const chamados = async (req, res) => {
+  let { Chamado_Criador, Criador_Tipo } = req.body;
+
+  try {
+    Chamado_Criador = Number(Chamado_Criador); // 👈 força ser número
+
+    console.log("Buscando chamados do criador ID:", Chamado_Criador);
+    console.log("Buscando tipo do criador tipo:", Criador_Tipo);
+
+    let query = "SELECT * FROM Chamados";
+    let params = [];
+
+    // 👇 agora a comparação funciona corretamente
+    if (!(Chamado_Criador === 1 && Criador_Tipo === "Usuario")) {
+      query += " WHERE Chamado_Criador = ? AND Criador_Tipo = ?";
+      params = [Chamado_Criador, Criador_Tipo];
+    }
+
+    console.log("Query:", query, "Params:", params);
+
+    const [rows] = await db.query(query, params);
+
+    if (rows.length > 0) {
+      return res.json(rows);
+    } else {
+      return res.status(404).json({
+        error: `Nenhum chamado encontrado para o criador ${Chamado_Criador} com o tipo ${Criador_Tipo}`,
+      });
     }
   } catch (err) {
     console.error("Erro no SELECT:", err.sqlMessage || err.message);
-    return res
-      .status(500)
-      .json({ error: "Erro no servidor ao buscar alimento" });
+    return res.status(500).json({
+      error: `Erro no servidor ao buscar chamados do criador ${Chamado_Criador}`,
+    });
   }
-}
-export const chamados = async (req, res) => {
-
-const { Chamado_Criador } = req.body;
-try {
-  console.log("Buscando chamados do criador ID:", Chamado_Criador);
-  console.log("Chamado_Criador:", Chamado_Criador);
-  console.log("Pool:", typeof pool.query);
-  
-  const [rows] = await pool.query(
-    "SELECT * FROM Chamados WHERE Chamado_Criador = ?",
-    [Chamado_Criador]
-  );
-
-  if (rows.length > 0) {
-    return res.json(rows); // retorna todos os chamados
-  } else {
-    return res.status(404).json({ error: `Nenhum chamado encontrado para o criador ${Chamado_Criador}` });
-  }
-} catch (err) {
-  console.error("Erro no SELECT:", err.sqlMessage || err.message);
-  return res
-    .status(500)
-    .json({ error: `Erro no servidor ao buscar chamados do criador ${Chamado_Criador}` });
-}
 };
-
 export const AdicionarChamados = async (req, res) => {
-const { Chamado_Titulo, Mensagem, Chamado_Criador } = req.body;
-
-if (!Chamado_Titulo || !Mensagem || !Chamado_Criador) {
-  return res.status(400).json({ error: "Campos obrigatórios não preenchidos." });
-}
-
-try {
-  // 1️⃣ Cria o chamado na tabela Chamados
-  const [resultChamado] = await pool.query(
-    `INSERT INTO Chamados (Chamado_Titulo, Chamado_Status, Chamado_Criador)
-     VALUES (?, 'Aberto', ?)`,
-    [Chamado_Titulo, Chamado_Criador]
-  );
-
-  const novoIDChamado = resultChamado.insertId;
-
-  // 2️⃣ Cria a primeira mensagem (descrição inicial)
-  await pool.query(
-    `INSERT INTO ChamadosMensagem (ID_Chamado, Mensagem, Remetente)
-     VALUES (?, ?, ?)`,
-    [novoIDChamado, Mensagem, Chamado_Criador]
-  );
-
-  res.status(201).json({
-    message: "Chamado criado com sucesso!",
-    ID_Chamado: novoIDChamado,
-  });
-} catch (err) {
-  console.error("Erro ao criar chamado:", err);
-  res.status(500).json({ error: "Erro no servidor ao criar chamado." });
-}
-};
-
-export const deleteChamado = async (req, res) => {
-
-const { ID_Chamado } = req.body;
-console.log(ID_Chamado)
-if (!ID_Chamado) {
-  return res.status(400).json({ error: "ID do chamado não informado." });
-}
-
-try {
-  // Verifica se o chamado existe antes de excluir
-  const [chamadoExiste] = await pool.query(
-    "SELECT * FROM Chamados WHERE ID_Chamado = ?",
-    [ID_Chamado]
-  );
-
-  if (chamadoExiste.length === 0) {
-    return res.status(404).json({ error: "Chamado não encontrado." });
+  const { Chamado_Titulo, Mensagem, Chamado_Criador, Criador_Tipo } = req.body;
+  console.log("Titulo: ", Chamado_Criador);
+  console.log("Mensagem: ", Mensagem);
+  console.log("Chamado_Criador: ", Chamado_Criador);
+  console.log("Criador_Tipo: ", Criador_Tipo);
+  if (!Chamado_Titulo || !Mensagem || !Chamado_Criador || !Criador_Tipo) {
+    return res
+      .status(400)
+      .json({ error: "Campos obrigatórios não preenchidos." });
   }
 
-  // Exclui as mensagens relacionadas primeiro (para manter integridade)
-  await pool.query("DELETE FROM ChamadosMensagem WHERE ID_Chamado = ?", [
-    ID_Chamado,
-  ]);
+  try {
+    // 1️⃣ Cria o chamado na tabela Chamados
+    const [resultChamado] = await db.query(
+      `INSERT INTO Chamados (Chamado_Titulo, Chamado_Status, Chamado_Criador, Criador_Tipo)
+     VALUES (?, 'Aberto', ?, ?)`,
+      [Chamado_Titulo, Chamado_Criador, Criador_Tipo]
+    );
 
-  // Exclui o chamado
-  await pool.query("DELETE FROM Chamados WHERE ID_Chamado = ?", [
-    ID_Chamado,
-  ]);
+    const novoIDChamado = resultChamado.insertId;
 
-  res.status(200).json({ message: "Chamado excluído com sucesso!" });
-} catch (err) {
-  console.error("Erro ao excluir chamado:", err);
-  res.status(500).json({ error: "Erro no servidor ao excluir chamado." });
-}
+    // 2️⃣ Cria a primeira mensagem (descrição inicial)
+    await db.query(
+      `INSERT INTO ChamadosMensagem (ID_Chamado, Mensagem, Remetente, Tipo_Remetente)
+     VALUES (?, ?, ?, ?)`,
+      [novoIDChamado, Mensagem, Chamado_Criador, Criador_Tipo]
+    );
+
+    res.status(201).json({
+      message: "Chamado criado com sucesso!",
+      ID_Chamado: novoIDChamado,
+    });
+  } catch (err) {
+    console.error("Erro ao criar chamado:", err);
+    res.status(500).json({ error: "Erro no servidor ao criar chamado." });
+  }
+};
+export const deleteChamado = async (req, res) => {
+  const { ID_Chamado, Criador_Tipo } = req.body;
+  console.log(ID_Chamado);
+  console.log(Criador_Tipo);
+  if (!ID_Chamado || !Criador_Tipo) {
+    return res.status(400).json({ error: "ID do chamado ou Criado Tipo não informado." });
+  }
+
+  try {
+    // Verifica se o chamado existe antes de excluir
+    const [chamadoExiste] = await db.query(
+      "SELECT * FROM Chamados WHERE ID_Chamado = ? AND Criador_Tipo = ?",
+      [ID_Chamado, Criador_Tipo]
+    );
+
+    if (chamadoExiste.length === 0) {
+      return res.status(404).json({ error: "Chamado não encontrado." });
+    }
+
+    // Exclui as mensagens relacionadas primeiro (para manter integridade)
+    await db.query("DELETE FROM ChamadosMensagem WHERE ID_Chamado = ?", [
+      ID_Chamado,
+    ]);
+
+    // Exclui o chamado
+    await db.query("DELETE FROM Chamados WHERE ID_Chamado = ? AND Criador_Tipo = ?", [ID_Chamado, Criador_Tipo]);
+
+    res.status(200).json({ message: "Chamado excluído com sucesso!" });
+  } catch (err) {
+    console.error("Erro ao excluir chamado:", err);
+    res.status(500).json({ error: "Erro no servidor ao excluir chamado." });
+  }
 };
 export const getMensagensChamado = async (req, res) => {
+  const { ID_Chamado } = req.params;
+console.log(ID_Chamado)
+  if (!ID_Chamado) {
+    return res.status(400).json({ error: "ID do chamado não informado." });
+  }
 
-const { ID_Chamado } = req.body;
-
-if (!ID_Chamado) {
-  return res.status(400).json({ error: "ID do chamado não informado." });
-}
-
-try {
-  const [mensagens] = await pool.query(
-    `SELECT 
-       ID_ChamadosMensagem,
-       ID_Chamado,
-       Mensagem,
-       Remetente,
-       DATE_FORMAT(created_at, '%d/%m/%Y %H:%i') AS DataEnvio
+  try {
+    const [mensagens] = await db.query(
+      `SELECT 
+       *
      FROM ChamadosMensagem
      WHERE ID_Chamado = ?
      ORDER BY created_at ASC`,
-    [ID_Chamado]
-  );
+      [ID_Chamado]
+    );
 
-  res.status(200).json(mensagens);
-} catch (err) {
-  console.error("Erro ao buscar mensagens:", err);
-  res.status(500).json({ error: "Erro no servidor ao buscar mensagens." });
-}
+    res.status(200).json(mensagens);
+  } catch (err) {
+    console.error("Erro ao buscar mensagens:", err);
+    res.status(500).json({ error: "Erro no servidor ao buscar mensagens." });
+  }
 };
 export const enviarMensagem = async (req, res) => {
+  const { ID_Chamado, Remetente, Mensagem, Remetente_Tipo } = req.body;
+console.log(Remetente_Tipo)
+  if (!ID_Chamado || !Remetente || !Mensagem || !Remetente_Tipo) {
+    return res
+      .status(400)
+      .json({ error: "Campos obrigatórios não preenchidos." });
+  }
 
-const { ID_Chamado, Remetente, Mensagem } = req.body;
+  try {
+    await db.query(
+      `INSERT INTO ChamadosMensagem (ID_Chamado, Mensagem, Remetente, Tipo_Remetente ,created_at)
+     VALUES (?, ?, ?, ?, NOW())`,
+      [ID_Chamado, Mensagem, Remetente, Remetente_Tipo]
+    );
 
-if (!ID_Chamado || !Remetente || !Mensagem) {
-  return res.status(400).json({ error: "Campos obrigatórios não preenchidos." });
-}
-
-try {
-  await pool.query(
-    `INSERT INTO ChamadosMensagem (ID_Chamado, Mensagem, Remetente, created_at)
-     VALUES (?, ?, ?, NOW())`,
-    [ID_Chamado, Mensagem, Remetente]
-  );
-
-  res.status(201).json({ message: "Mensagem enviada com sucesso!" });
-} catch (err) {
-  console.error("Erro ao enviar mensagem:", err);
-  res.status(500).json({ error: "Erro no servidor ao enviar mensagem." });
-}
+    res.status(201).json({ message: "Mensagem enviada com sucesso!" });
+  } catch (err) {
+    console.error("Erro ao enviar mensagem:", err);
+    res.status(500).json({ error: "Erro no servidor ao enviar mensagem." });
+  }
 };
+export const codigoAlimento = async (req, res) => {
+  const { codigo } = req.params;
+  try {
+    const [rows] = await db.query("SELECT * FROM codAlimentos WHERE Alimento_Cod = ?", [codigo]);
+    if (rows.length === 0) return res.status(404).json({ msg: "Alimento não encontrado." });
+    res.json(rows[0]);
+  } catch (err) {
+    console.error("Erro ao buscar alimento:", err);
+    res.status(500).json({ error: "Erro interno do servidor." });
+  }
+};
+
+
+
+export const doacoes = async (req, res) => {
+  const { Alimento_Cod, Alimento_Validade, Alimento_Quantidade } = req.body;
+  if (!Alimento_Cod || !Alimento_Validade || !Alimento_Quantidade)
+    return res.status(400).json({ error: "Campos obrigatórios não preenchidos." });
+
+  try {
+    await db.query(
+      "INSERT INTO Alimentos (Alimento_Cod, Alimento_Validade, Alimento_Quantidade) VALUES (?, ?, ?)",
+      [Alimento_Cod, Alimento_Validade, Alimento_Quantidade]
+    );
+    res.json({ msg: "Doação registrada com sucesso!" });
+  } catch (err) {
+    console.error("Erro ao registrar doação:", err);
+    res.status(500).json({ error: "Erro ao registrar doação." });
+  }
+}

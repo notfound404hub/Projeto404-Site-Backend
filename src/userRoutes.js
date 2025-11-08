@@ -1,10 +1,48 @@
 import express from "express";
 import multer from "multer";
-import {alunos, cadastroUsuario, enviarEmailVerificacao, forgotPassword, grupos, login, resetPassword, verificarEmail} from
-'./controllers/authController.js'
-import { deleteFromTable, filtrar, getAllUsuarios, importarUsuarios, ordenar,updateUsuarioById, usuarioDeleteById, usuarioGetById, updateAlunoById, alunoGetById, deleteAlunoById, tabelas, getCampanhas, updateCampanhaById, AlimentosGetById, chamados, AdicionarChamados, deleteChamado, getMensagensChamado, enviarMensagem } from "./controllers/userController.js";
-import { authMiddleware } from './middlewares/authMiddleware.js'
-import { deleteMessagesById, getMessagesById, updateMessagesById, postMessages } from "./controllers/chatController.js";
+import {
+  alunos,
+  cadastroUsuario,
+  enviarEmailVerificacao,
+  forgotPassword,
+  grupos,
+  login,
+  resetPassword,
+  verificarEmail,
+} from "./controllers/authController.js";
+import {
+  deleteFromTable,
+  filtrar,
+  getAllUsuarios,
+  importarUsuarios,
+  ordenar,
+  updateUsuarioById,
+  usuarioDeleteById,
+  usuarioGetById,
+  updateAlunoById,
+  alunoGetById,
+  deleteAlunoById,
+  tabelas,
+  getCampanhas,
+  updateCampanhaById,
+  AlimentosGetById,
+  chamados,
+  AdicionarChamados,
+  deleteChamado,
+  getMensagensChamado,
+  enviarMensagem,
+  codigoAlimento,
+  doacoes,
+  cadastroAlimento
+
+} from "./controllers/userController.js";
+import { authMiddleware } from "./middlewares/authMiddleware.js";
+import {
+  deleteMessagesById,
+  getMessagesById,
+  updateMessagesById,
+  postMessages,
+} from "./controllers/chatController.js";
 
 console.log("userRoutes.js carregado");
 
@@ -14,67 +52,80 @@ console.log("userRoutes.js carregado");
 
 const r = express.Router();
 
-r.post('/login', login)
+r.post("/login", login);
 
-r.post('/alunos', alunos)
+r.post("/alunos", alunos);
 
-r.post('/grupos', grupos)
+r.post("/grupos", grupos);
 
-r.post('/cadastroUsuario', authMiddleware, cadastroUsuario)
+r.post("/cadastroUsuario", authMiddleware, cadastroUsuario);
 
-r.post('/auth/forgotPassword', forgotPassword)
+r.post("/auth/forgotPassword", forgotPassword);
 
-r.put('/auth/resetPassword/:token', resetPassword)
+r.put("/auth/resetPassword/:token", resetPassword);
 
-r.post('/enviaremail', authMiddleware, enviarEmailVerificacao)
+r.post("/enviaremail", authMiddleware, enviarEmailVerificacao);
 
-r.get('/verificar/:token', verificarEmail)
+r.get("/verificar/:token", verificarEmail);
 
-r.get('/alunos/:ID_Aluno', authMiddleware, alunoGetById)
+r.get("/alunos/:ID_Aluno", authMiddleware, alunoGetById);
 
-r.put('/alunos/:ID_Aluno', authMiddleware, updateAlunoById)
+r.put("/alunos/:ID_Aluno", authMiddleware, updateAlunoById);
 
-r.delete('/alunos', authMiddleware, deleteAlunoById)
+r.delete("/alunos", authMiddleware, deleteAlunoById);
 
-r.get('/usuario/:ID_Usuario', authMiddleware, usuarioGetById)
+r.get("/usuario/:ID_Usuario", authMiddleware, usuarioGetById);
 
-r.post('/tabela', authMiddleware, tabelas)
+r.post("/tabela", authMiddleware, tabelas);
 
-r.delete('/usuario', authMiddleware, usuarioDeleteById)
+r.delete("/usuario", authMiddleware, usuarioDeleteById);
 
-r.put('/usuario/:ID_Usuario', authMiddleware, updateUsuarioById)
+r.put("/usuario/:ID_Usuario", authMiddleware, updateUsuarioById);
 
-r.post('/usuarios', authMiddleware, getAllUsuarios)
+r.post("/usuarios", authMiddleware, getAllUsuarios);
 
-r.delete('/deleteFromTable', authMiddleware, deleteFromTable)
+r.delete("/deleteFromTable", authMiddleware, deleteFromTable);
 
-r.post('/filtrar', authMiddleware, filtrar)
+r.post("/filtrar", authMiddleware, filtrar);
 
-r.post('/ordenar', authMiddleware, ordenar)
+r.post("/ordenar", authMiddleware, ordenar);
 
-r.post('/importarUsuarios', authMiddleware, upload.single("file"), importarUsuarios )
+r.post(
+  "/importarUsuarios",
+  authMiddleware,
+  upload.single("file"),
+  importarUsuarios
+);
 
-r.get('/messages/:userId', authMiddleware, getMessagesById)
+r.get("/messages/:userId", authMiddleware, getMessagesById);
 
-r.post('/messages', authMiddleware, postMessages)
+r.post("/messages", authMiddleware, postMessages);
 
-r.put('/messages/:id', authMiddleware, updateMessagesById)
+r.put("/messages/:id", authMiddleware, updateMessagesById);
 
-r.delete('/messages/:id', authMiddleware, deleteMessagesById)
+r.delete("/messages/:id", authMiddleware, deleteMessagesById);
 
-r.get("/campanhas/:ID_Campanha", authMiddleware, getCampanhas)
+r.get("/campanhas/:ID_Campanha", authMiddleware, getCampanhas);
 
-r.put("/campanhas/:ID_Campanha", authMiddleware, updateCampanhaById)
+r.put("/campanhas/:ID_Campanha", authMiddleware, updateCampanhaById);
 
-r.get("/alimentos/:ID_Alimento", authMiddleware, AlimentosGetById)
+r.get("/alimentos/:ID_Alimento", authMiddleware, AlimentosGetById);
 
-r.get("/chamados", authMiddleware, chamados)
-r.get("/AdicionarChamados", authMiddleware, AdicionarChamados)
-r.get("/deleteChamado", authMiddleware, deleteChamado)
-r.get("/getMensagensChamado", authMiddleware, getMensagensChamado)
-r.get("/enviarMensagem", authMiddleware, enviarMensagem)
+r.post("/chamados", authMiddleware, chamados);
+
+r.post("/AdicionarChamados", authMiddleware, AdicionarChamados);
+
+r.delete("/deleteChamado", authMiddleware, deleteChamado);
+
+r.get("/getMensagensChamado/:ID_Chamado", authMiddleware, getMensagensChamado);
+
+r.get('/codigoAlimento/:ID_Alimento', authMiddleware, codigoAlimento)
+r.get('/doacoes', authMiddleware, doacoes)
+r.post('/cadastroAlimento', authMiddleware, cadastroAlimento)
 
 
+
+r.post("/enviarMensagem", authMiddleware, enviarMensagem);
 
 // r.post("/login", async (req, res) => {
 //   try {
@@ -116,7 +167,7 @@ r.get("/enviarMensagem", authMiddleware, enviarMensagem)
 //     }
 //     const user = rows[0]
 //     const ok = await bcrypt.compare(Aluno_Senha, user.Aluno_Senha)
-//     if(!ok) return res.status(401).json({error:"Credenciais inválidas", details:err.message})  
+//     if(!ok) return res.status(401).json({error:"Credenciais inválidas", details:err.message})
 
 //     if(!user.Foto){
 //       if(rows.length > 0){
@@ -162,7 +213,7 @@ r.get("/enviarMensagem", authMiddleware, enviarMensagem)
 //     console.error("Erro no login:", err.message);
 //     res.status(500).json({ error: "Erro no login", details: err.message });
 //   }
-// }); 
+// });
 
 // r.put("/usuarioPrincipal/:ID_Usuario", async (req, res) => {
 //   try {
@@ -214,9 +265,6 @@ r.get("/enviarMensagem", authMiddleware, enviarMensagem)
 //     res.status(500).json({ error: "Erro no servidor ao atualizar usuário" });
 //   }
 // });
-// 
-
-
-
+//
 
 export default r;
