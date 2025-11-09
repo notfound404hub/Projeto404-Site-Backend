@@ -7,6 +7,7 @@ import {
 } from "../services/tokenService.js";
 import dotenv from "dotenv";
 import xlsx from "xlsx";
+import { error } from "console";
 
 export const tabelas = async (req, res) => {
   const { teste } = req.body;
@@ -218,6 +219,138 @@ export const updateUsuarioById = async (req, res) => {
   }
 };
 
+export const importarAlunos = async (req, res) => {
+  console.log("Recebendo requisição para importar alunos...");
+
+  if (!req.file) {
+    console.log("Nenhum arquivo recebido!");
+    return res.status(400).json({ error: "Nenhum arquivo enviado." });
+  }
+
+  console.log(" Arquivo recebido:", req.file.originalname);
+
+  try {
+    const workbook = xlsx.readFile(req.file.path);
+    const sheetName = workbook.SheetNames[0];
+    const dados = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName]);
+
+    console.log(`${dados.length} registros lidos do Excel.`);
+
+    if (dados.length === 0) {
+      return res.status(400).json({ error: "Planilha vazia ou inválida." });
+    }
+
+    const connection = await db.getConnection();
+    const inseridos = [];
+    const atualizados = [];
+    const ignorados = [];
+
+    try {
+      await connection.beginTransaction();
+
+      for (const u of dados) {
+        const {
+          Aluno_Nome,
+          Aluno_RA,
+          Aluno_Email,
+          Aluno_CPF,
+          Aluno_Telefone,
+          Aluno_Senha,
+          Aluno_Grupo,
+          Aluno_Turma
+        } = u;
+
+        if (!Aluno_Email) {
+          console.log("Ignorando linha sem e-mail:", u);
+          continue;
+        }
+
+        const [rows] = await connection.query(
+          "SELECT * FROM Aluno WHERE Aluno_Email = ?",
+          [Aluno_Email]
+        );
+
+        if (rows.length > 0) {
+          const atual = rows[0];
+          const mudou =
+            atual.Aluno_Nome !== Aluno_Nome ||
+            atual.Aluno_CPF !== Aluno_CPF ||
+            atual.Aluno_RA !== Aluno_RA ||
+            atual.Aluno_Telefone !== Aluno_Telefone ||
+            atual.Aluno_Senha !== Aluno_Senha;
+          atual.Aluno_Grupo !== Aluno_Grupo;
+          atual.Aluno_Turma !== Aluno_Turma;
+
+          if (mudou) {
+            console.log(`Atualizando usuário alterado: ${Aluno_Email}`);
+            await connection.query(
+              `UPDATE Aluno
+               SET Aluno_Nome = ?, Aluno_CPF = ?, Aluno_RA = ?, Aluno_Telefone = ?, Aluno_Senha = ?, Aluno_Grupo = ?, Aluno_Turma = ?
+               WHERE Aluno_Email = ?`,
+              [
+                Aluno_Nome || null,
+                Aluno_CPF || null,
+                Aluno_RA || null,
+                Aluno_Telefone || null,
+                Aluno_Senha || null,
+                Aluno_Grupo || null,
+                Aluno_Turma || null,
+                Aluno_Email
+              ]
+            );
+            atualizados.push(Aluno_Email);
+          } else {
+            console.log(`Nenhuma mudança detectada em: ${Aluno_Email}`);
+            ignorados.push(Aluno_Email);
+          }
+        } else {
+          console.log(`Inserindo novo aluno: ${Aluno_Email}`);
+          await connection.query(
+            `INSERT INTO Aluno 
+             (Aluno_Nome, Aluno_CPF, Aluno_RA, Aluno_Email, Aluno_Telefone, Aluno_Senha, Aluno_Grupo, Aluno_Turma)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              Aluno_Nome || null,
+              Aluno_CPF || null,
+              Aluno_RA || null,
+              Aluno_Email,
+              Aluno_Telefone || null,
+              Aluno_Senha || null,
+              Aluno_Grupo || null,
+              Aluno_Turma || null,
+            ]
+          );
+          inseridos.push(Aluno_Email);
+        }
+      }
+
+      await connection.commit();
+
+      console.log("Importação concluída!");
+      console.log("Inseridos:", inseridos);
+      console.log("Atualizados:", atualizados);
+      console.log("Ignorados (sem mudança):", ignorados);
+
+      res.json({
+        msg: `Importação concluída! (${inseridos.length} novos, ${atualizados.length} atualizados, ${ignorados.length} sem mudança)`,
+        inseridos,
+        atualizados,
+        ignorados,
+      });
+    } catch (err) {
+      await connection.rollback();
+      console.error("Erro durante importação:", err);
+      res.status(500).json({ error: "Erro ao importar usuários." });
+    } finally {
+      connection.release();
+    }
+  } catch (err) {
+    console.error("Erro ao processar arquivo Excel:", err);
+    res.status(500).json({ error: "Erro ao processar arquivo Excel." });
+  }
+};
+
+
 export const getAllUsuarios = async (req, res) => {
   const { teste } = req.body;
   console.log(teste[1]);
@@ -232,6 +365,53 @@ export const getAllUsuarios = async (req, res) => {
   } catch (error) {
     console.error("Erro ao buscar usuários:", error);
     res.status(500).json({ error: "Erro no servidor ao buscar usuários" });
+  }
+};
+
+export const gruposComAlunos = async (req, res) => {
+  try {
+    const [rows] = await db.query(`
+      SELECT 
+        g.ID_Grupo,
+        g.Grupo_Nome,
+        g.Grupo_Curso,
+        GROUP_CONCAT(a.Aluno_Nome SEPARATOR ', ') AS Alunos
+      FROM Grupo g
+      LEFT JOIN Grupo_Aluno ga ON g.ID_Grupo = ga.ID_Grupo
+      LEFT JOIN Aluno a ON ga.ID_Aluno = a.ID_Aluno
+      GROUP BY g.ID_Grupo, g.Grupo_Nome, g.Grupo_Curso
+    `);
+
+    const gruposMap = {};
+
+    for (const row of rows) {
+      if (!gruposMap[row.ID_Grupo]) {
+        gruposMap[row.ID_Grupo] = {
+          ID_Grupo: row.ID_Grupo,
+          Grupo_Nome: row.Grupo_Nome,
+          Grupo_Curso: row.Grupo_Curso,
+          alunos: []
+        };
+      }
+
+      if (row.Aluno_Nome) {
+        gruposMap[row.ID_Grupo].alunos.push(row.Aluno_Nome);
+      }
+    }
+
+    const grupos = Object.values(gruposMap).map((g) => {
+      const obj = { ...g };
+      g.alunos.forEach((nome, i) => {
+        obj[`Aluno_${i + 1}`] = nome;
+      });
+      delete obj.alunos;
+      return obj;
+    });
+
+    return res.status(200).json(grupos);
+  } catch (error) {
+    console.error("Erro ao buscar grupos:", error);
+    return res.status(500).json({ error: "Erro ao buscar grupos e alunos." });
   }
 };
 
@@ -252,7 +432,7 @@ export const deleteFromTable = async (req, res) => {
       return res.status(400).json({ error: "Nome da tabela não informado." });
     }
 
-    const tabelasPermitidas = ["Campanha", "Usuario", "Mentor", "Aluno"];
+    const tabelasPermitidas = ["Campanha", "Usuario", "Mentor", "Aluno", "Alimento", "Grupo"];
     if (!tabelasPermitidas.includes(tabela.trim())) {
       console.log(`A tabela é ${tabela}`);
       return res
@@ -282,6 +462,25 @@ export const deleteFromTable = async (req, res) => {
     res.status(500).json({ error: "Erro no servidor ao excluir itens." });
   }
 };
+
+export const cadastroGrupo = async (req, res) => {
+  const { Grupo_Nome, Grupo_Curso } = req.body
+
+  try {
+    const [rows] = await db.query("SELECT * FROM Grupo WHERE Grupo_Nome = ?", [Grupo_Nome])
+
+    if (rows.length) return res.status(409).json({ error: "Grupo já cadastrado" })
+
+    await db.query("INSERT INTO Grupo(Grupo_Nome, Grupo_Curso) VALUES (?, ?)", [Grupo_Nome, Grupo_Curso])
+
+    return res.status(200).json({ msg: "Grupo cadastrado com sucesso" })
+
+  } catch (err) {
+    console.error(err)
+    return res.status(500).json({ error: "Erro interno do servidor" })
+  }
+
+}
 
 export const filtrar = async (req, res) => {
   try {
@@ -794,9 +993,8 @@ export const cadastroAlimento = async (req, res) => {
   }
 
   try {
-    // Inserir na tabela de produtos fixos (catálogo)
     await db.query(
-      "INSERT INTO codAlimentos (Alimento_Cod, Alimento_Nome, Alimento_Marca, Alimento_Peso) VALUES (?, ?, ?, ?)",
+      "INSERT INTO codigoAlimentos (Alimento_Cod, Alimento_Nome, Alimento_Marca, Alimento_Peso) VALUES (?, ?, ?, ?)",
       [Alimento_Cod, Alimento_Nome, Alimento_Marca, Alimento_Peso]
     );
 
@@ -811,15 +1009,12 @@ export const AlimentosGetById = async (req, res) => {
   const { ID_Alimento } = req.params;
 
   try {
-    console.log("Buscando alimento EAN:", ID_Alimento);
-
     const [rows] = await db.query(
-      "SELECT * FROM codAlimentos WHERE Alimento_Cod = ?",
+      "SELECT * FROM Alimento WHERE ID_Alimento = ?",
       [ID_Alimento]
     );
 
     if (rows.length > 0) {
-      // Retorna o primeiro alimento diretamente
       return res.json(rows[0]);
     } else {
       return res.status(404).json({ error: "Alimento não encontrado." });
@@ -830,12 +1025,44 @@ export const AlimentosGetById = async (req, res) => {
   }
 };
 
+export const AlimentosUpdateById = async (req, res) => {
+  const { ID_Alimento } = req.params;
+  const { Alimento_Quantidade, Alimento_Validade } = req.body
+
+  console.log("🚀 Chegou na rota GET /alimentos");
+
+  try {
+    console.log(req.body)
+    console.log(req.params)
+    console.log("Buscando alimento EAN:", ID_Alimento);
+
+    const [rows] = await db.query(
+      "SELECT * FROM Alimento WHERE ID_Alimento = ?",
+      [ID_Alimento]
+    );
+
+    console.log(rows)
+
+    if (!rows.length) return res.status(404).json({ error: "Alimento não encontrado" })
+
+    await db.query(
+      "UPDATE Alimento SET Alimento_Validade = ?, Alimento_Quantidade = ? WHERE ID_Alimento = ?",
+      [Alimento_Validade, Alimento_Quantidade, ID_Alimento]
+    );
+
+    return res.status(200).json({ msg: "Alimento atualizado com sucesso" })
+
+  } catch (err) {
+    console.error("Erro ao buscar alimento:", err.sqlMessage || err.message);
+    return res.status(500).json({ error: "Erro no servidor ao buscar alimento." });
+  }
+};
 
 export const chamados = async (req, res) => {
   let { Chamado_Criador, Criador_Tipo } = req.body;
 
   try {
-    Chamado_Criador = Number(Chamado_Criador); // 👈 força ser número
+    Chamado_Criador = Number(Chamado_Criador);
 
     console.log("Buscando chamados do criador ID:", Chamado_Criador);
     console.log("Buscando tipo do criador tipo:", Criador_Tipo);
@@ -843,7 +1070,6 @@ export const chamados = async (req, res) => {
     let query = "SELECT * FROM Chamados";
     let params = [];
 
-    // 👇 agora a comparação funciona corretamente
     if (!(Chamado_Criador === 1 && Criador_Tipo === "Usuario")) {
       query += " WHERE Chamado_Criador = ? AND Criador_Tipo = ?";
       params = [Chamado_Criador, Criador_Tipo];
@@ -867,6 +1093,7 @@ export const chamados = async (req, res) => {
     });
   }
 };
+
 export const AdicionarChamados = async (req, res) => {
   const { Chamado_Titulo, Mensagem, Chamado_Criador, Criador_Tipo } = req.body;
   console.log("Titulo: ", Chamado_Criador);
@@ -880,7 +1107,6 @@ export const AdicionarChamados = async (req, res) => {
   }
 
   try {
-    // 1️⃣ Cria o chamado na tabela Chamados
     const [resultChamado] = await db.query(
       `INSERT INTO Chamados (Chamado_Titulo, Chamado_Status, Chamado_Criador, Criador_Tipo)
      VALUES (?, 'Aberto', ?, ?)`,
@@ -889,7 +1115,6 @@ export const AdicionarChamados = async (req, res) => {
 
     const novoIDChamado = resultChamado.insertId;
 
-    // 2️⃣ Cria a primeira mensagem (descrição inicial)
     await db.query(
       `INSERT INTO ChamadosMensagem (ID_Chamado, Mensagem, Remetente, Tipo_Remetente)
      VALUES (?, ?, ?, ?)`,
@@ -914,7 +1139,6 @@ export const deleteChamado = async (req, res) => {
   }
 
   try {
-    // Verifica se o chamado existe antes de excluir
     const [chamadoExiste] = await db.query(
       "SELECT * FROM Chamados WHERE ID_Chamado = ? AND Criador_Tipo = ?",
       [ID_Chamado, Criador_Tipo]
@@ -924,12 +1148,10 @@ export const deleteChamado = async (req, res) => {
       return res.status(404).json({ error: "Chamado não encontrado." });
     }
 
-    // Exclui as mensagens relacionadas primeiro (para manter integridade)
     await db.query("DELETE FROM ChamadosMensagem WHERE ID_Chamado = ?", [
       ID_Chamado,
     ]);
 
-    // Exclui o chamado
     await db.query("DELETE FROM Chamados WHERE ID_Chamado = ? AND Criador_Tipo = ?", [ID_Chamado, Criador_Tipo]);
 
     res.status(200).json({ message: "Chamado excluído com sucesso!" });
@@ -938,9 +1160,10 @@ export const deleteChamado = async (req, res) => {
     res.status(500).json({ error: "Erro no servidor ao excluir chamado." });
   }
 };
+
 export const getMensagensChamado = async (req, res) => {
   const { ID_Chamado } = req.params;
-console.log(ID_Chamado)
+  console.log(ID_Chamado)
   if (!ID_Chamado) {
     return res.status(400).json({ error: "ID do chamado não informado." });
   }
@@ -961,9 +1184,10 @@ console.log(ID_Chamado)
     res.status(500).json({ error: "Erro no servidor ao buscar mensagens." });
   }
 };
+
 export const enviarMensagem = async (req, res) => {
   const { ID_Chamado, Remetente, Mensagem, Remetente_Tipo } = req.body;
-console.log(Remetente_Tipo)
+  console.log(Remetente_Tipo)
   if (!ID_Chamado || !Remetente || !Mensagem || !Remetente_Tipo) {
     return res
       .status(400)
@@ -983,10 +1207,11 @@ console.log(Remetente_Tipo)
     res.status(500).json({ error: "Erro no servidor ao enviar mensagem." });
   }
 };
+
 export const codigoAlimento = async (req, res) => {
-  const { codigo } = req.params;
+  const {ean} = req.params;
   try {
-    const [rows] = await db.query("SELECT * FROM codAlimentos WHERE Alimento_Cod = ?", [codigo]);
+    const [rows] = await db.query("SELECT * FROM codigoAlimentos WHERE Alimento_Cod = ?", [ean]);
     if (rows.length === 0) return res.status(404).json({ msg: "Alimento não encontrado." });
     res.json(rows[0]);
   } catch (err) {
@@ -995,17 +1220,15 @@ export const codigoAlimento = async (req, res) => {
   }
 };
 
-
-
 export const doacoes = async (req, res) => {
-  const { Alimento_Cod, Alimento_Validade, Alimento_Quantidade } = req.body;
-  if (!Alimento_Cod || !Alimento_Validade || !Alimento_Quantidade)
+  const { Alimento_Codigo, Alimento_Validade, Alimento_Quantidade } = req.body;
+  if (!Alimento_Codigo || !Alimento_Validade || !Alimento_Quantidade)
     return res.status(400).json({ error: "Campos obrigatórios não preenchidos." });
 
   try {
     await db.query(
-      "INSERT INTO Alimentos (Alimento_Cod, Alimento_Validade, Alimento_Quantidade) VALUES (?, ?, ?)",
-      [Alimento_Cod, Alimento_Validade, Alimento_Quantidade]
+      "INSERT INTO Alimentos (Alimento_Codigo, Alimento_Validade, Alimento_Quantidade) VALUES (?, ?, ?)",
+      [Alimento_Codigo, Alimento_Validade, Alimento_Quantidade]
     );
     res.json({ msg: "Doação registrada com sucesso!" });
   } catch (err) {
