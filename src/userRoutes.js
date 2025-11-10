@@ -2,7 +2,52 @@ import express from "express";
 import pool from "./db.js";
 import bcrypt from "bcrypt";
 import multer from "multer";
+<<<<<<< Updated upstream
 import xlsx from "xlsx";
+=======
+import {
+  alunos,
+  cadastroUsuario,
+  enviarEmailVerificacao,
+  forgotPassword,
+  grupos,
+  login,
+  resetPassword,
+  verificarEmail,
+} from "./controllers/authController.js";
+import {
+  deleteFromTable,
+  filtrar,
+  getAllUsuarios,
+  importarUsuarios,
+  ordenar,
+  updateUsuarioById,
+  usuarioDeleteById,
+  usuarioGetById,
+  updateAlunoById,
+  alunoGetById,
+  deleteAlunoById,
+  tabelas,
+  getCampanhas,
+  updateCampanhaById,
+  AlimentosGetById,
+  chamados,
+  AdicionarChamados,
+  deleteChamado,
+  getMensagensChamado,
+  enviarMensagem,
+  codigoAlimento,
+  doacoes,
+  cadastroAlimento,
+  getGrupos,
+  getQuantidadeDoacoes,
+  getQuantidadeUsuarios,
+  getQuantidadeAlunos,
+  getRankingGrupos,
+  getTotalAlimentos,
+  gruposAno,
+  getCampanhasGrafico, getTransacoes, getStatusCampanhas, getComparativoFinanceiro, getEvolucaoAlimentos, getDistribuicaoGrupos
+>>>>>>> Stashed changes
 
 
 
@@ -17,6 +62,21 @@ console.log("userRoutes.js carregado");
 const r = express.Router();
 
 // r.post("/delete", async (req, res) => {
+
+r.get("/totalAlimentos/:ano", authMiddleware, getTotalAlimentos);
+r.get("/rankingGrupos/:ano", authMiddleware, getRankingGrupos);
+r.get("/quantidadeAlunos/:ano", authMiddleware, getQuantidadeAlunos);
+r.get("/quantidadeUsuarios/:ano", authMiddleware, getQuantidadeUsuarios);
+r.get("/quantidadeDoacoes/:ano", authMiddleware, getQuantidadeDoacoes);
+r.get("/grupos/:ano", authMiddleware, getGrupos);
+r.get("/distribuicaoGrupos/:ano", authMiddleware, getDistribuicaoGrupos);
+r.get("/evolucaoAlimentos/:ano", authMiddleware, getEvolucaoAlimentos);
+r.get("/comparativoFinanceiro/:ano", authMiddleware, getComparativoFinanceiro);
+r.get("/statusCampanhas/:ano", authMiddleware, getStatusCampanhas);
+r.get("/getCampanhasGrafico/:ano", authMiddleware, getStatusCampanhas);
+r.get("/getCampanhasGrafico/:ano", authMiddleware, getCampanhasGrafico);
+r.get("/getTransacoes/:ano", authMiddleware, getTransacoes);
+r.get("/gruposAno/:ano", authMiddleware, gruposAno);
 
 
 //   try {
