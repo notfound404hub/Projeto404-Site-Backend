@@ -1,5 +1,7 @@
 import express from "express";
 import multer from "multer";
+import xlsx from "xlsx";
+
 import {
   alunos,
   cadastroUsuario,
@@ -10,6 +12,7 @@ import {
   resetPassword,
   verificarEmail,
 } from "./controllers/authController.js";
+
 import {
   deleteFromTable,
   filtrar,
@@ -34,11 +37,26 @@ import {
   codigoAlimento,
   doacoes,
   cadastroAlimento,
+  getGrupos,
+  getQuantidadeDoacoes,
+  getQuantidadeUsuarios,
+  getQuantidadeAlunos,
+  getRankingGrupos,
+  getTotalAlimentos,
+  gruposAno,
+  getCampanhasGrafico,
+  getTransacoes,
+  getStatusCampanhas,
+  getComparativoFinanceiro,
+  getEvolucaoAlimentos,
+  getDistribuicaoGrupos,
   AlimentosUpdateById,
   cadastroGrupo,
   gruposComAlunos,
-  importarAlunos
+  importarAlunos,
 } from "./controllers/userController.js";
+
+import { createToken, denyToken } from "./services/tokenService.js";
 import { authMiddleware } from "./middlewares/authMiddleware.js";
 import {
   deleteMessagesById,
@@ -50,225 +68,87 @@ import {
 console.log("userRoutes.js carregado");
 
 const upload = multer({ dest: "uploads/" });
-
-console.log("userRoutes.js carregado");
-
 const r = express.Router();
 
+/* ROTAS DE AUTENTICAÇÃO */
 r.post("/login", login);
+r.post("/cadastroUsuario", cadastroUsuario);
+r.post("/verificarEmail", verificarEmail);
+r.post("/enviarEmailVerificacao", enviarEmailVerificacao);
+r.post("/forgotPassword", forgotPassword);
+r.post("/resetPassword", resetPassword);
 
-r.post("/alunos", alunos);
+/* ROTAS DE USUÁRIOS */
+r.get("/getAllUsuarios", getAllUsuarios);
+r.get("/usuarioGetById/:id", usuarioGetById);
+r.put("/updateUsuarioById/:id", updateUsuarioById);
+r.delete("/usuarioDeleteById/:id", usuarioDeleteById);
+r.post("/importarUsuarios", upload.single("file"), importarUsuarios);
 
-r.post("/grupos", gruposComAlunos);
+/* ROTAS DE ALUNOS */
+r.get("/alunos", alunos);
+r.get("/alunoGetById/:id", alunoGetById);
+r.put("/updateAlunoById/:id", updateAlunoById);
+r.delete("/deleteAlunoById/:id", deleteAlunoById);
+r.post("/importarAlunos", upload.single("file"), importarAlunos);
 
-r.post("/cadastroUsuario", authMiddleware, cadastroUsuario);
+/* ROTAS DE GRUPOS */
+r.get("/grupos", grupos);
+r.get("/getGrupos", getGrupos);
+r.get("/gruposComAlunos", gruposComAlunos);
+r.post("/cadastroGrupo", cadastroGrupo);
 
-r.post("/cadastroGrupo", authMiddleware, cadastroGrupo)
+/* ROTAS DE CAMPANHAS */
+r.get("/getCampanhas", getCampanhas);
+r.put("/updateCampanhaById/:id", updateCampanhaById);
 
-r.post("/auth/forgotPassword", forgotPassword);
+/* ROTAS DE ALIMENTOS */
+r.get("/AlimentosGetById/:id", AlimentosGetById);
+r.put("/AlimentosUpdateById/:id", AlimentosUpdateById);
+r.post("/cadastroAlimento", cadastroAlimento);
+r.get("/codigoAlimento/:codigo", codigoAlimento);
 
-r.put("/auth/resetPassword/:token", resetPassword);
+/* ROTAS DE DOAÇÕES */
+r.get("/doacoes", doacoes);
 
-r.post("/enviaremail", authMiddleware, enviarEmailVerificacao);
+/* ROTAS DE CHAMADOS */
+r.get("/chamados", chamados);
+r.post("/AdicionarChamados", AdicionarChamados);
+r.delete("/deleteChamado/:id", deleteChamado);
+r.get("/getMensagensChamado/:id", getMensagensChamado);
+r.post("/enviarMensagem", enviarMensagem);
 
-r.get("/verificar/:token", verificarEmail);
+/* ROTAS DE DASHBOARD E GRÁFICOS */
+r.get("/getQuantidadeDoacoes", getQuantidadeDoacoes);
+r.get("/getQuantidadeUsuarios", getQuantidadeUsuarios);
+r.get("/getQuantidadeAlunos", getQuantidadeAlunos);
+r.get("/getRankingGrupos", getRankingGrupos);
+r.get("/getTotalAlimentos", getTotalAlimentos);
+r.get("/gruposAno", gruposAno);
+r.get("/getCampanhasGrafico", getCampanhasGrafico);
+r.get("/getTransacoes", getTransacoes);
+r.get("/getStatusCampanhas", getStatusCampanhas);
+r.get("/getComparativoFinanceiro", getComparativoFinanceiro);
+r.get("/getEvolucaoAlimentos", getEvolucaoAlimentos);
+r.get("/getDistribuicaoGrupos", getDistribuicaoGrupos);
 
-r.get("/alunos/:ID_Aluno", authMiddleware, alunoGetById);
+/* ROTAS DE CHAT */
+r.get("/getMessagesById/:id", getMessagesById);
+r.post("/postMessages", postMessages);
+r.put("/updateMessagesById/:id", updateMessagesById);
+r.delete("/deleteMessagesById/:id", deleteMessagesById);
 
-r.put("/alunos/:ID_Aluno", authMiddleware, updateAlunoById);
+/* ROTAS DE SERVIÇOS E TABELAS */
+r.get("/tabelas", tabelas);
+r.post("/filtrar", filtrar);
+r.post("/ordenar", ordenar);
+r.post("/deleteFromTable", deleteFromTable);
 
-r.delete("/alunos", authMiddleware, deleteAlunoById);
+/* ROTAS DE TOKENS */
+r.post("/createToken", createToken);
+r.post("/denyToken", denyToken);
 
-r.post("/importarAlunos",authMiddleware, upload.single("file"), importarAlunos);
-
-r.get("/usuario/:ID_Usuario", authMiddleware, usuarioGetById);
-
-r.post("/tabela", authMiddleware, tabelas);
-
-r.delete("/usuario", authMiddleware, usuarioDeleteById);
-
-r.put("/usuario/:ID_Usuario", authMiddleware, updateUsuarioById);
-
-r.post("/usuarios", authMiddleware, getAllUsuarios);
-
-r.delete("/deleteFromTable", authMiddleware, deleteFromTable);
-
-r.post("/filtrar", authMiddleware, filtrar);
-
-r.post("/ordenar", authMiddleware, ordenar);
-
-r.post("/importarUsuarios",authMiddleware, upload.single("file"), importarUsuarios);
-
-r.get("/messages/:userId", authMiddleware, getMessagesById);
-
-r.post("/messages", authMiddleware, postMessages);
-
-r.put("/messages/:id", authMiddleware, updateMessagesById);
-
-r.delete("/messages/:id", authMiddleware, deleteMessagesById);
-
-r.get("/campanhas/:ID_Campanha", authMiddleware, getCampanhas);
-
-r.put("/campanhas/:ID_Campanha", authMiddleware, updateCampanhaById);
-
-r.get("/alimentos/:ID_Alimento", authMiddleware, AlimentosGetById);
-
-r.put("/alimentos/:ID_Alimento", authMiddleware, AlimentosUpdateById);
-
-r.post("/chamados", authMiddleware, chamados);
-
-r.post("/AdicionarChamados", authMiddleware, AdicionarChamados);
-
-r.delete("/deleteChamado", authMiddleware, deleteChamado);
-
-r.get("/getMensagensChamado/:ID_Chamado", authMiddleware, getMensagensChamado);
-
-r.get('/codigoAlimento/:Alimento_Cod', authMiddleware, codigoAlimento)
-
-r.get('/doacoes', authMiddleware, doacoes)
-
-r.post('/cadastroAlimento', authMiddleware, cadastroAlimento)
-
-r.post("/enviarMensagem", authMiddleware, enviarMensagem);
-
-// r.post("/login", async (req, res) => {
-//   try {
-//     const {Email, Senha } = req.body;
-//     console.log(Email, Senha);
-
-//     const [rows] = await pool.query(
-//       "SELECT * FROM Aluno WHERE Aluno_Email = ?",
-//       [Email]
-//     );
-//     const [rows2] = await pool.query(
-//       "SELECT * FROM Usuario WHERE Usuario_Email = ?",
-//       [Email]
-//     );
-//     console.log(rows)
-//     console.log(rows2)
-//     if ((rows.length === 0)&&(rows2.length === 0)) {
-//       return res
-//         .status(400)
-//         .json({ error: "E-Mail ou senha Senha incorretos" });
-//     }
-//     let user = "";
-//     let ok = ""
-//     if(rows.length > 0){
-//       console.log("E-mail de um(a) aluno(a)")
-//       user = rows[0];
-//       ok = await bcrypt.compare(Senha, user.Aluno_Senha);
-//     }else if(rows2.length > 0){
-//       console.log("E-mail de um(a) usuário(a)")
-//       user = rows2[0];
-//       ok = await bcrypt.compare(Senha, user.Usuario_Senha);
-//     }
-//       "SELECT * FROM Usuario WHERE Usuario_Email = ? AND Usuario_Senha = ?",
-//       [Usuario_Email, Usuario_Senha]
-//     );
-
-//     if (rows.length === 0) {
-//       return res.status(400).json({ error: "E-Mail ou senha Senha incorretos" });
-//     }
-//     const user = rows[0]
-//     const ok = await bcrypt.compare(Aluno_Senha, user.Aluno_Senha)
-//     if(!ok) return res.status(401).json({error:"Credenciais inválidas", details:err.message})
-
-//     if(!user.Foto){
-//       if(rows.length > 0){
-//         return res.status(200).json({
-//           msg: "Login bem sucedido, va pra tela de cadastro, de aluno",
-//           ID_Aluno: user.ID_Aluno,
-//           Aluno_Nome: user.Aluno_Nome,
-//           Aluno_Email: user.Aluno_Email,
-//           tela:"/Cadastro",
-//         });
-//       }else{
-//         if(rows2.length > 0){
-//           return res.status(200).json({
-//             msg: "Login bem sucedido, va pra tela de cadastro, de usuario",
-//             ID_Aluno: user.ID_Aluno,
-//             Aluno_Nome: user.Aluno_Nome,
-//             Aluno_Email: user.Aluno_Email,
-//             tela:"/Cadastro",
-//           });
-//       }}
-//     }else{
-//       if(rows.length > 0){
-//         return res.status(200).json({
-//           msg: "Login bem sucedido, va pra tela de adm, de aluno",
-//           ID_Aluno: user.ID_Aluno,
-//           Aluno_Nome: user.Aluno_Nome,
-//           Aluno_Email: user.Aluno_Email,
-//           tela:"/admin",
-//         });
-//       }else{
-//         if(rows2.length > 0){
-//           return res.status(200).json({
-//             msg: "Login bem sucedido, va pra tela de adm, de usuario",
-//             ID_Aluno: user.ID_Aluno,
-//             Aluno_Nome: user.Aluno_Nome,
-//             Aluno_Email: user.Aluno_Email,
-//             tela:"/admin",
-//           });
-//       }}
-//     }
-
-//   } catch (err) {
-//     console.error("Erro no login:", err.message);
-//     res.status(500).json({ error: "Erro no login", details: err.message });
-//   }
-// });
-
-// r.put("/usuarioPrincipal/:ID_Usuario", async (req, res) => {
-//   try {
-//     const { ID_Usuario } = req.params;
-//     const { Usuario_Email, Usuario_Senha, Usuario_Cargo } = req.body;
-
-//     await pool.query(
-//       "UPDATE Usuario SET Usuario_Email=?, Usuario_Senha=?, Usuario_Cargo=? WHERE ID_Usuario=?",
-//       [Usuario_Email, Usuario_Senha, Usuario_Cargo, ID_Usuario]
-//     );
-
-//     return res.status(200).json({ msg: "Usuário atualizado com sucesso" });
-//   } catch (err) {
-//     console.error("Erro no UPDATE:", err.sqlMessage || err.message);
-//     res.status(500).json({ error: "Erro no servidor ao atualizar usuário" });
-//   }
-// });
-
-// r.put("/update", async (req, res) => {
-//   try {
-//     console.log("Requisição recebida para atualizar usuário");
-//     console.log("Corpo da requisição:", req.body);
-
-//     const { id, nome, email, telefone, empresa, senha } = req.body;
-
-//     if (!id) {
-//       console.log("ID do usuário não informado");
-//       return res.status(400).json({ error: "ID do usuário é obrigatório" });
-//     }
-
-//     if (!nome || !email || !telefone || !empresa || !senha) {
-//       console.log("Campos obrigatórios ausentes");
-//       return res.status(400).json({ error: "Preencha todos os campos" });
-//     }
-
-//     console.log(
-//       `Atualizando usuário ID: ${id} com nome: ${nome}, email: ${email}, telefone: ${telefone}, empresa: ${empresa}`
-//     );
-
-//     await pool.query(
-//       "UPDATE Usuario SET Usuario_Nome = ?, Usuario_Email = ?, Usuario_Telefone = ?, Usuario_Empresa = ?, Usuario_Senha = ? WHERE ID_Usuario = ?",
-//       [nome, email, telefone, empresa, senha, id]
-//     );
-
-//     console.log("Usuário atualizado com sucesso no banco de dados");
-//     res.status(200).json({ msg: "Usuário atualizado com sucesso!" });
-//   } catch (err) {
-//     console.error("Erro ao atualizar usuário:", err);
-//     res.status(500).json({ error: "Erro no servidor ao atualizar usuário" });
-//   }
-// });
-//
+/* MIDDLEWARE DE AUTENTICAÇÃO */
+r.use(authMiddleware);
 
 export default r;
