@@ -14,7 +14,7 @@ export const tabelas = async (req, res) => {
   console.log(req.body);
   try {
     let tabela = teste.trim();
-    const tabelasPermitidas = ["Usuario", "Campanha", "Alimentos"];
+    const tabelasPermitidas = ["Usuario", "Campanha", "Alimentos", "TransacaoEntrada", "TransacaoSaida"];
     if (!tabelasPermitidas.includes(tabela)) {
       return res.status(400).json({ error: "Tabela inválida" });
     }
@@ -371,17 +371,11 @@ export const getAllUsuarios = async (req, res) => {
 export const gruposComAlunos = async (req, res) => {
   try {
     const [rows] = await db.query(`
-      SELECT 
-        g.ID_Grupo,
-        g.Grupo_Nome,
-        g.Grupo_Curso,
-        GROUP_CONCAT(a.Aluno_Nome SEPARATOR ', ') AS Alunos
+      SELECT *
       FROM Grupo g
       LEFT JOIN Grupo_Aluno ga ON g.ID_Grupo = ga.ID_Grupo
       LEFT JOIN Aluno a ON ga.ID_Aluno = a.ID_Aluno
-      GROUP BY g.ID_Grupo, g.Grupo_Nome, g.Grupo_Curso
     `);
-
     const gruposMap = {};
 
     for (const row of rows) {
@@ -400,13 +394,14 @@ export const gruposComAlunos = async (req, res) => {
     }
 
     const grupos = Object.values(gruposMap).map((g) => {
-      const obj = { ...g };
+      const obj = { ...g }
       g.alunos.forEach((nome, i) => {
-        obj[`Aluno_${i + 1}`] = nome;
-      });
-      delete obj.alunos;
+        obj[`Aluno_${i + 1}`] = nome
+      })
+      obj.alunos = g.alunos;
       return obj;
     });
+
 
     return res.status(200).json(grupos);
   } catch (error) {
@@ -432,7 +427,7 @@ export const deleteFromTable = async (req, res) => {
       return res.status(400).json({ error: "Nome da tabela não informado." });
     }
 
-    const tabelasPermitidas = ["Campanha", "Usuario", "Mentor", "Aluno", "Alimento", "Grupo"];
+    const tabelasPermitidas = ["Campanha", "Usuario", "Mentor", "Aluno", "Alimento", "Grupo", "TransacaoEntrada", "TransacaoSaida", ];
     if (!tabelasPermitidas.includes(tabela.trim())) {
       console.log(`A tabela é ${tabela}`);
       return res
@@ -1005,6 +1000,145 @@ export const cadastroAlimento = async (req, res) => {
   }
 };
 
+// Rota para cadastrar transação (entrada ou saída)
+export const cadastroTransacao = async (req, res) => {
+  try {
+    // Front may send either a 'tabela' field (TransacaoEntrada|TransacaoSaida) or a transacao_Tipo
+    const {
+      tabela: tabelaBody,
+      transacao_Grupo,
+      transacao_Aluno,
+      transacao_Valor,
+      transacao_Comprovante,
+    } = req.body;
+
+    let finalTable = tabelaBody;
+    if (!finalTable) {
+      const tipoLower = String(finalTable).toLowerCase();
+      if (tipoLower.includes("entrada")) finalTable = "TransacaoEntrada";
+      else if (tipoLower.includes("saida") || tipoLower.includes("saída")) finalTable = "TransacaoSaida";
+    }
+
+    if (!finalTable) {
+      return res.status(400).json({ error: "Tipo de transação é obrigatório (envie 'tabela' ou 'transacao_Tipo')." });
+    }
+
+    // validate finalTable
+    if (finalTable !== "TransacaoEntrada" && finalTable !== "TransacaoSaida") {
+      return res.status(400).json({ error: "Campo 'tabela' inválido. Use 'TransacaoEntrada' ou 'TransacaoSaida'." });
+    }
+
+    const [result] = await db.query(
+      `INSERT INTO ${finalTable} (transacao_Grupo, transacao_Aluno, transacao_Valor, transacao_Comprovante, created_at)
+       VALUES (?, ?, ?, ?, NOW())`,
+      [transacao_Grupo || null, transacao_Aluno || null, transacao_Valor || null, transacao_Comprovante || null]
+    );
+
+    return res.status(201).json({ msg: "Transação cadastrada com sucesso!", id: result.insertId });
+  } catch (err) {
+    console.error("Erro ao cadastrar transação:", err);
+    return res.status(500).json({ error: "Erro no servidor ao cadastrar transação." });
+  }
+};
+
+// Rota para atualizar transação (entrada ou saída)
+export const updateTransacao = async (req, res) => {
+  try {
+    // front sends body like:
+    // { transacao_Grupo, transacao_Aluno, transacao_Valor, transacao_Tipo, transacao_Comprovante, tabela }
+    const {
+      transacao_Tipo,
+      transacao_Grupo,
+      transacao_Aluno,
+      transacao_Valor,
+      transacao_Comprovante,
+      tabela: tabelaBody,
+    } = req.body;
+
+    // Accept params named exactly as DB id columns to avoid frontend conflict
+    const idFromEntrada = req.params.ID_TransacaoEntrada;
+    const idFromSaida = req.params.ID_TransacaoSaida;
+    const idGeneric = req.params.id;
+    const id = idFromEntrada || idFromSaida || idGeneric;
+
+    // Determine table: prefer explicit tabela from body, then transacao_Tipo, then param used
+    let finalTable = tabelaBody;
+    if (!finalTable && transacao_Tipo) {
+      const tipoLower = String(transacao_Tipo).toLowerCase();
+      if (tipoLower.includes("entrada")) finalTable = "TransacaoEntrada";
+      else if (tipoLower.includes("saida") || tipoLower.includes("saída")) finalTable = "TransacaoSaida";
+    }
+    if (!finalTable) {
+      if (idFromEntrada) finalTable = "TransacaoEntrada";
+      else if (idFromSaida) finalTable = "TransacaoSaida";
+    }
+
+    if (!id || !finalTable) {
+      return res.status(400).json({ error: "ID e tabela (ou transacao_Tipo) são obrigatórios." });
+    }
+
+    const idCol = finalTable === "TransacaoEntrada" ? "ID_TransacaoEntrada" : "ID_TransacaoSaida";
+
+    const [result] = await db.query(
+      `UPDATE ${finalTable}
+       SET transacao_Grupo = ?, transacao_Aluno = ?, transacao_Valor = ?, transacao_Comprovante = ?
+       WHERE ${idCol} = ?`,
+      [transacao_Grupo || null, transacao_Aluno || null, transacao_Valor || null, transacao_Comprovante || null, id]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: "Transação não encontrada." });
+    }
+
+    return res.status(200).json({ msg: "Transação atualizada com sucesso!" });
+  } catch (err) {
+    console.error("Erro ao atualizar transação:", err);
+    return res.status(500).json({ error: "Erro no servidor ao atualizar transação." });
+  }
+};
+
+// Rota GET para TransacaoEntrada por ID (baseada em AlimentosGetById)
+export const transacaoEntradaGetById = async (req, res) => {
+  const { ID_TransacaoEntrada } = req.params;
+
+  try {
+    const [rows] = await db.query(
+      "SELECT * FROM TransacaoEntrada WHERE ID_TransacaoEntrada = ?",
+      [ID_TransacaoEntrada]
+    );
+
+    if (rows.length > 0) {
+      return res.json(rows[0]);
+    } else {
+      return res.status(404).json({ error: "Transação de entrada não encontrada." });
+    }
+  } catch (err) {
+    console.error("Erro ao buscar transação de entrada:", err.sqlMessage || err.message);
+    return res.status(500).json({ error: "Erro no servidor ao buscar transação de entrada." });
+  }
+};
+
+// Rota GET para TransacaoSaida por ID (baseada em AlimentosGetById)
+export const transacaoSaidaGetById = async (req, res) => {
+  const { ID_TransacaoSaida } = req.params;
+
+  try {
+    const [rows] = await db.query(
+      "SELECT * FROM TransacaoSaida WHERE ID_TransacaoSaida = ?",
+      [ID_TransacaoSaida]
+    );
+
+    if (rows.length > 0) {
+      return res.json(rows[0]);
+    } else {
+      return res.status(404).json({ error: "Transação de saída não encontrada." });
+    }
+  } catch (err) {
+    console.error("Erro ao buscar transação de saída:", err.sqlMessage || err.message);
+    return res.status(500).json({ error: "Erro no servidor ao buscar transação de saída." });
+  }
+};
+
 export const AlimentosGetById = async (req, res) => {
   const { ID_Alimento } = req.params;
 
@@ -1209,7 +1343,7 @@ export const enviarMensagem = async (req, res) => {
 };
 
 export const codigoAlimento = async (req, res) => {
-  const {ean} = req.params;
+  const { ean } = req.params;
   try {
     const [rows] = await db.query("SELECT * FROM codigoAlimentos WHERE Alimento_Cod = ?", [ean]);
     if (rows.length === 0) return res.status(404).json({ msg: "Alimento não encontrado." });
@@ -1236,3 +1370,5 @@ export const doacoes = async (req, res) => {
     res.status(500).json({ error: "Erro ao registrar doação." });
   }
 }
+
+

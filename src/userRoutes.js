@@ -2,7 +2,6 @@ import express from "express";
 import multer from "multer";
 import {
   alunos,
-  cadastroUsuario,
   enviarEmailVerificacao,
   forgotPassword,
   grupos,
@@ -37,7 +36,11 @@ import {
   AlimentosUpdateById,
   cadastroGrupo,
   gruposComAlunos,
-  importarAlunos
+  importarAlunos, 
+  cadastroTransacao, 
+  updateTransacao, 
+  transacaoEntradaGetById, 
+  transacaoSaidaGetById
 } from "./controllers/userController.js";
 import { authMiddleware } from "./middlewares/authMiddleware.js";
 import {
@@ -60,8 +63,6 @@ r.post("/login", login);
 r.post("/alunos", alunos);
 
 r.post("/grupos", gruposComAlunos);
-
-r.post("/cadastroUsuario", authMiddleware, cadastroUsuario);
 
 r.post("/cadastroGrupo", authMiddleware, cadastroGrupo)
 
@@ -114,6 +115,16 @@ r.put("/campanhas/:ID_Campanha", authMiddleware, updateCampanhaById);
 r.get("/alimentos/:ID_Alimento", authMiddleware, AlimentosGetById);
 
 r.put("/alimentos/:ID_Alimento", authMiddleware, AlimentosUpdateById);
+
+r.post("/transacao", authMiddleware, cadastroTransacao);
+
+r.put("/transacao/entrada/:ID_TransacaoEntrada", authMiddleware, updateTransacao);
+
+r.put("/transacao/saida/:ID_TransacaoSaida", authMiddleware, updateTransacao);
+
+r.get("/transacao/entrada/:ID_TransacaoEntrada", authMiddleware, transacaoEntradaGetById);
+
+r.get("/transacao/saida/:ID_TransacaoSaida", authMiddleware, transacaoSaidaGetById);
 
 r.post("/chamados", authMiddleware, chamados);
 

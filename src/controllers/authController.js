@@ -33,13 +33,13 @@ export const login = async (req, res) => {
       if (rowsAluno.length > 0) {
         user = rowsAluno[0];
         tipo = "Aluno";
-        // const ok = await bcrypt.compare(senha, user.Aluno_Senha)
-        // if (!ok) return res.status(401).json({ error: "Credenciais inválidas" })
+        const ok = await bcrypt.compare(senha, user.Aluno_Senha)
+        if (!ok) return res.status(401).json({ error: "Credenciais inválidas" })
       } else if (rowsUsuario.length > 0) {
         user = rowsUsuario[0];
         tipo = "Usuario";
-        // const ok = await bcrypt.compare(senha, user.Usuario_Senha)
-        // if (!ok) return res.status(401).json({ error: "Credenciais inválidas" })
+        const ok = await bcrypt.compare(senha, user.Usuario_Senha)
+        if (!ok) return res.status(401).json({ error: "Credenciais inválidas" })
       } else {
         return res.status(401).json({ error: "Credenciais inválidas" });
       }
@@ -107,60 +107,6 @@ export const grupos = async (req, res) => {
     }
 }
 
-export const cadastroUsuario = async (req, res) => {
-    try {
-        const { nome, empresa, cpfCnpj, email, telefone, senha, tabela } = req.body;
-        const hashed = await bcrypt.hash(senha, 10)
-
-        if (!nome || !email || !senha) {
-            return res.status(400).json({
-                error: "Nome, email e senha são obrigatórios"
-            });
-        }
-
-        const [emailExists] = await db.query(
-            `SELECT * FROM ${tabela} WHERE Usuario_Email = ?`,
-            [email]
-        );
-
-        if (emailExists.length > 0) {
-            return res.status(400).json({
-                error: "Este email já está cadastrado"
-            });
-        }
-
-        if (cpfCnpj) {
-            const [cpfExists] = await db.query(
-                `SELECT * FROM ${tabela} WHERE Usuario_CPF = ?`,
-                [cpfCnpj]
-            );
-
-            if (cpfExists.length > 0) {
-                return res.status(400).json({
-                    error: "Este CPF/CNPJ já está cadastrado"
-                });
-            }
-        }
-
-        const [result] = await db.query(
-            `INSERT INTO ${tabela}
-      (Usuario_Nome, Usuario_Empresa, Usuario_CPF, Usuario_Email, Usuario_Telefone, Usuario_Senha) 
-      VALUES (?, ?, ?, ?, ?, ?)`,
-            [nome, empresa || null, cpfCnpj || null, email, telefone || null, hashed]
-        );
-
-        return res.status(201).json({
-            msg: "Usuário cadastrado com sucesso",
-            ID_Usuario: result.insertId
-        });
-
-    } catch (err) {
-        console.error("Erro no cadastro:", err);
-        res.status(500).json({ error: "Erro no servidor ao cadastrar usuário" });
-    }
-};
-
-
 const transporter = nodemailer.createTransport({
     service: "gmail",
     auth: {
@@ -182,20 +128,35 @@ export const forgotPassword = async (req, res) => {
     const { email } = req.body
     console.log("requisição recebida", req.body);
     try {
-        const [rows] = await db.query("SELECT * FROM Aluno WHERE Aluno_Email = ?", [email])
+        const [rowsAluno] = await db.query("SELECT * FROM Aluno WHERE Aluno_Email = ?", [email])
+        const [rowsUsuario] = await db.query("SELECT * FROM Usuario WHERE Usuario_Email = ?", [email])
 
         let message = ""
 
-        if (rows.length) {
-            const user = rows[0]
-            const { token } = createToken({ id: user.ID_Aluno }, { expiresIn: "15m" })
+        let user = null
+        let tipo = null
+
+        if (rowsAluno && rowsAluno.length) {
+            user = rowsAluno[0]
+            tipo = 'Aluno'
+        } else if (rowsUsuario && rowsUsuario.length) {
+            user = rowsUsuario[0]
+            tipo = 'Usuario'
+        }
+
+        if (user) {
+            const userId = tipo === 'Aluno' ? user.ID_Aluno : user.ID_Usuario
+            const userName = tipo === 'Aluno' ? user.Aluno_Nome : user.Usuario_Nome
+            const userEmail = tipo === 'Aluno' ? user.Aluno_Email : user.Usuario_Email
+
+            const { token } = createToken({ id: userId, tipo }, { expiresIn: "15m" })
             const resetLink = `${process.env.FRONTEND_URL}/reset-senha/${token}`;
 
             await transporter.sendMail({
                 from: process.env.EMAIL_USER,
-                to: email,
+                to: userEmail,
                 subject: "Redefinição de senha",
-                html: `<p>Olá, ${user.Aluno_Nome}!</p>
+                html: `<p>Olá, ${userName}!</p>
                           <p>Você solicitou a redefinição de senha. Clique no link abaixo para criar uma nova senha:</p>
                           <a href="${resetLink}">${resetLink}</a>
                           <p>O link é válido por 15 minutos.</p>`
@@ -224,9 +185,20 @@ export const resetPassword = async (req, res) => {
         console.log(req.body)
         const decoded = await verifyToken(token)
         const userId = decoded.id
+        const tipo = decoded.tipo
 
         const hashed = await bcrypt.hash(senha, 10)
-        await db.query("UPDATE Aluno SET Aluno_Senha = ? WHERE ID_Aluno = ?", [hashed, userId])
+
+        if (tipo === 'Aluno') {
+            await db.query("UPDATE Aluno SET Aluno_Senha = ? WHERE ID_Aluno = ?", [hashed, userId])
+        } else if (tipo === 'Usuario') {
+            await db.query("UPDATE Usuario SET Usuario_Senha = ? WHERE ID_Usuario = ?", [hashed, userId])
+        } else {
+            const [resAluno] = await db.query("UPDATE Aluno SET Aluno_Senha = ? WHERE ID_Aluno = ?", [hashed, userId])
+            if (!resAluno || resAluno.affectedRows === 0) {
+                await db.query("UPDATE Usuario SET Usuario_Senha = ? WHERE ID_Usuario = ?", [hashed, userId])
+            }
+        }
 
         res.status(200).json({ msg: "Senha redefinida com sucesso!" })
         console.log("Sua senha foi redefinida")
@@ -241,20 +213,35 @@ export const enviarEmailVerificacao = async (req, res) => {
 
     try {
         const userId = req.user.id
+        const [rowsUsuario] = await db.query("SELECT * FROM Usuario WHERE ID_Usuario = ?", [userId])
+        let user = null
+        let tipo = null
 
-        const [rows] = await db.query("SELECT * FROM Aluno WHERE ID_Aluno = ?", [userId])
-        if (!rows) return res.status(404).json({ error: "Usuário não encontrado" })
+        if (rowsUsuario && rowsUsuario.length) {
+            user = rowsUsuario[0]
+            tipo = 'Usuario'
+        } else {
+            const [rowsAluno] = await db.query("SELECT * FROM Aluno WHERE ID_Aluno = ?", [userId])
+            if (rowsAluno && rowsAluno.length) {
+                user = rowsAluno[0]
+                tipo = 'Aluno'
+            }
+        }
 
-        const user = rows[0]
+        if (!user) return res.status(404).json({ error: "Usuário não encontrado" })
 
-        const { token: tokenVerifyMail } = createToken({ id: user.ID_Aluno }, { expiresIn: "10m" })
+        const userIdToken = tipo === 'Aluno' ? user.ID_Aluno : user.ID_Usuario
+        const userEmail = tipo === 'Aluno' ? user.Aluno_Email : user.Usuario_Email
+        const userName = tipo === 'Aluno' ? user.Aluno_Nome : user.Usuario_Nome
+
+        const { token: tokenVerifyMail } = createToken({ id: userIdToken, tipo }, { expiresIn: "10m" })
         const verifyLink = `${process.env.FRONTEND_URL}/verificar/${tokenVerifyMail}`
 
         await transporter.sendMail({
             from: process.env.EMAIL_USER,
-            to: user.Aluno_Email,
+            to: userEmail,
             subject: "Verificação de email",
-            html: `<p>Olá, ${user.Aluno_Nome}!</p>
+            html: `<p>Olá, ${userName}!</p>
                           <p>Essa mensagem foi enviada para realizar a verificação do seu email. Clique no link abaixo para verificar seu email:</p>
                           <a href="${verifyLink}">${verifyLink}</a>
                           <p>O link é válido por 10 minutos.</p>`
@@ -273,8 +260,27 @@ export const verificarEmail = async (req, res) => {
     try {
         const decoded = await verifyToken(token)
         const userId = decoded.id
+        const tipo = decoded.tipo
 
-        await db.query("UPDATE Aluno SET Verificado = ? WHERE ID_Aluno = ?", [true, userId])
+        if (tipo === 'Aluno') {
+            await db.query("UPDATE Aluno SET Verificado = ? WHERE ID_Aluno = ?", [true, userId])
+        } else if (tipo === 'Usuario') {
+            try {
+                await db.query("UPDATE Usuario SET Verificado = ? WHERE ID_Usuario = ?", [true, userId])
+            } catch (e) {
+                await db.query("UPDATE Usuario SET Verificado = ? WHERE ID_Usuario = ?", [true, userId])
+            }
+        } else {
+            try {
+                await db.query("UPDATE Aluno SET Verificado = ? WHERE ID_Aluno = ?", [true, userId])
+            } catch (e) {
+                try {
+                    await db.query("UPDATE Usuario SET Verificado = ? WHERE ID_Usuario = ?", [true, userId])
+                } catch (e2) {
+                    await db.query("UPDATE Usuario SET Verificado = ? WHERE ID_Usuario = ?", [true, userId])
+                }
+            }
+        }
 
         return res.status(200).json({ msg: "Seu email foi verificado" })
 
