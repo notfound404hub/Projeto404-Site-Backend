@@ -1,13 +1,5 @@
 import db from "../db.js";
-import bcrypt from "bcrypt";
-import {
-  createToken,
-  denyToken,
-  verifyToken,
-} from "../services/tokenService.js";
-import dotenv from "dotenv";
 import xlsx from "xlsx";
-import { error } from "console";
 
 export const tabelas = async (req, res) => {
   const { teste } = req.body;
