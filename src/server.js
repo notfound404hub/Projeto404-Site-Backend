@@ -18,7 +18,7 @@ app.use((req, res, next) => {
 });
 
 if (process.env.NODE_ENV !== "production") {
-  const PORT = process.env.PORT || 500;
+  const PORT = process.env.PORT
   app.listen(PORT, () => console.log(`✅ Server rodando na porta ${PORT}`));
 }
 
