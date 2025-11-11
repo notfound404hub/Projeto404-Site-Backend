@@ -30,7 +30,6 @@ import {
   deleteChamado,
   getMensagensChamado,
   enviarMensagem,
-  codigoAlimento,
   doacoes,
   cadastroAlimento,
   AlimentosUpdateById,
@@ -40,7 +39,22 @@ import {
   cadastroTransacao, 
   updateTransacao, 
   transacaoEntradaGetById, 
-  transacaoSaidaGetById
+  transacaoSaidaGetById,
+  getQuantidadeDoacoes,
+  getQuantidadeUsuarios,
+  getQuantidadeAlunos,
+  getRankingGrupos,
+  getTotalAlimentos,
+  gruposAno,
+  getCampanhasGrafico,
+  getTransacoes,
+  getStatusCampanhas,
+  getComparativoFinanceiro,
+  getEvolucaoAlimentos,
+  getDistribuicaoGrupos,
+  cadastroAluno,
+  buscarCodigoAlimento
+
 } from "./controllers/userController.js";
 import { authMiddleware } from "./middlewares/authMiddleware.js";
 import {
@@ -61,6 +75,8 @@ const r = express.Router();
 r.post("/login", login);
 
 r.post("/alunos", alunos);
+
+r.post("/cadastroAluno", authMiddleware, cadastroAluno)
 
 r.post("/grupos", gruposComAlunos);
 
@@ -134,13 +150,37 @@ r.delete("/deleteChamado", authMiddleware, deleteChamado);
 
 r.get("/getMensagensChamado/:ID_Chamado", authMiddleware, getMensagensChamado);
 
-r.get('/codigoAlimento/:Alimento_Cod', authMiddleware, codigoAlimento)
+r.get('/codigoAlimento/:Alimento_Cod', authMiddleware, buscarCodigoAlimento)
 
-r.get('/doacoes', authMiddleware, doacoes)
+r.post('/doacoes', authMiddleware, doacoes)
 
 r.post('/cadastroAlimento', authMiddleware, cadastroAlimento)
 
 r.post("/enviarMensagem", authMiddleware, enviarMensagem);
+
+r.get("/getQuantidadeDoacoes/:ano", authMiddleware,getQuantidadeDoacoes);
+
+r.get("/getQuantidadeUsuarios/:ano",authMiddleware, getQuantidadeUsuarios);
+
+r.get("/getQuantidadeAlunos/:ano",authMiddleware, getQuantidadeAlunos);
+
+r.get("/getRankingGrupos/:ano", authMiddleware,getRankingGrupos);
+
+r.get("/getTotalAlimentos/:ano", authMiddleware,getTotalAlimentos);
+
+r.get("/gruposAno/:ano", authMiddleware,gruposAno);
+
+r.get("/getCampanhasGrafico/:ano",authMiddleware, getCampanhasGrafico);
+
+r.get("/getTransacoes/:ano", authMiddleware,getTransacoes);
+
+r.get("/getStatusCampanhas/:ano", authMiddleware,getStatusCampanhas);
+
+r.get("/getComparativoFinanceiro/:ano",authMiddleware, getComparativoFinanceiro);
+
+r.get("/getEvolucaoAlimentos/:ano",authMiddleware, getEvolucaoAlimentos);
+
+r.get("/getDistribuicaoGrupos/:ano",authMiddleware, getDistribuicaoGrupos);
 
 // r.post("/login", async (req, res) => {
 //   try {

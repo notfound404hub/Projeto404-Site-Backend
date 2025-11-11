@@ -73,6 +73,59 @@ export const alunoGetById = async (req, res) => {
   }
 };
 
+export const cadastroAluno = async (req, res) => {
+  const { Aluno_Nome, Aluno_Email, Aluno_RA, Grupo } = req.body;
+
+  if (!Aluno_Nome || !Aluno_Email || !Aluno_RA || !Grupo) {
+    return res.status(400).json({ error: "Preencha todos os campos obrigatórios." });
+  }
+
+  try {
+    const [grupoRows] = await db.query(
+      "SELECT ID_Grupo FROM Grupo WHERE Grupo_Nome = ?",
+      [Grupo]
+    );
+
+    if (!grupoRows.length) {
+      return res.status(404).json({ error: "Grupo não encontrado. Cadastre o grupo primeiro." });
+    }
+
+    const ID_Grupo = grupoRows[0].ID_Grupo;
+
+    const [alunoExistente] = await db.query(
+      "SELECT * FROM Aluno WHERE Aluno_RA = ? OR Aluno_Email = ?",
+      [Aluno_RA, Aluno_Email]
+    );
+
+    if (alunoExistente.length > 0) {
+      return res.status(409).json({ error: "Aluno já cadastrado com esse RA ou e-mail." });
+    }
+
+    const [alunoResult] = await db.query(
+      "INSERT INTO Aluno (Aluno_Nome, Aluno_Email, Aluno_RA) VALUES (?, ?, ?)",
+      [Aluno_Nome, Aluno_Email, Aluno_RA]
+    );
+
+    const ID_Aluno = alunoResult.insertId;
+
+    await db.query(
+      "INSERT INTO grupo_aluno (ID_Grupo, ID_Aluno) VALUES (?, ?)",
+      [ID_Grupo, ID_Aluno]
+    );
+
+    return res.status(200).json({
+      msg: "Aluno cadastrado com sucesso!",
+      Aluno_ID: ID_Aluno,
+      Grupo_ID: ID_Grupo,
+    });
+  } catch (err) {
+    console.error("Erro ao cadastrar aluno:", err);
+    return res.status(500).json({ error: "Erro interno do servidor ao cadastrar aluno." });
+  }
+};
+
+
+
 export const updateAlunoById = async (req, res) => {
   try {
     console.log("Requisição recebida para atualizar usuário.");
@@ -988,6 +1041,7 @@ export const cadastroAlimento = async (req, res) => {
   }
 
   try {
+
     await db.query(
       "INSERT INTO codigoAlimentos (Alimento_Cod, Alimento_Nome, Alimento_Marca, Alimento_Peso) VALUES (?, ?, ?, ?)",
       [Alimento_Cod, Alimento_Nome, Alimento_Marca, Alimento_Peso]
@@ -1342,33 +1396,409 @@ export const enviarMensagem = async (req, res) => {
   }
 };
 
-export const codigoAlimento = async (req, res) => {
-  const { ean } = req.params;
+// controllers/alimentosController.js
+export const buscarCodigoAlimento = async (req, res) => {
+  const { Alimento_Cod } = req.params;
+
   try {
-    const [rows] = await db.query("SELECT * FROM codigoAlimentos WHERE Alimento_Cod = ?", [ean]);
-    if (rows.length === 0) return res.status(404).json({ msg: "Alimento não encontrado." });
-    res.json(rows[0]);
+    const [rows] = await db.query(
+      "SELECT * FROM codigoAlimentos WHERE Alimento_Cod = ?",
+      [Alimento_Cod]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ msg: "Alimento não encontrado." });
+    }
+
+    // alimento encontrado
+    return res.status(200).json(rows[0]);
   } catch (err) {
     console.error("Erro ao buscar alimento:", err);
-    res.status(500).json({ error: "Erro interno do servidor." });
+    return res.status(500).json({ error: "Erro interno do servidor." });
   }
 };
 
+
 export const doacoes = async (req, res) => {
-  const { Alimento_Codigo, Alimento_Validade, Alimento_Quantidade } = req.body;
-  if (!Alimento_Codigo || !Alimento_Validade || !Alimento_Quantidade)
+  const {
+    Alimento_Nome,
+    Alimento_Marca,
+    Alimento_Codigo,
+    Alimento_Validade,
+    Alimento_Peso,
+    Alimento_Quantidade,
+    Aluno_Grupo
+  } = req.body;
+
+  console.log( Alimento_Nome)
+  console.log( Alimento_Marca)
+  console.log(  Alimento_Codigo)
+  console.log( Alimento_Validade)
+  console.log(  Alimento_Peso)
+  console.log( Aluno_Grupo)
+ 
+  if (
+    !Alimento_Nome ||
+    !Alimento_Marca ||
+    !Alimento_Codigo ||
+    !Alimento_Validade ||
+    !Alimento_Peso ||
+    !Alimento_Quantidade ||
+    !Aluno_Grupo
+  ) {
     return res.status(400).json({ error: "Campos obrigatórios não preenchidos." });
+  }
 
   try {
+    // Calcula o total automaticamente
+    const Alimento_Total = Alimento_Peso * Alimento_Quantidade;
+
+    // Inserção no banco
     await db.query(
-      "INSERT INTO Alimentos (Alimento_Codigo, Alimento_Validade, Alimento_Quantidade) VALUES (?, ?, ?)",
-      [Alimento_Codigo, Alimento_Validade, Alimento_Quantidade]
+      `INSERT INTO Alimentos 
+      (Alimento_Nome, Alimento_Marca, Alimento_Codigo, Alimento_Validade, Alimento_Peso, Alimento_Quantidade, Alimento_Total, Grupo_Nome)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        Alimento_Nome,
+        Alimento_Marca,
+        Alimento_Codigo,
+        Alimento_Validade,
+        Alimento_Peso,
+        Alimento_Quantidade,
+        Alimento_Total,
+        Aluno_Grupo
+      ]
     );
-    res.json({ msg: "Doação registrada com sucesso!" });
+
+    res.status(200).json({ msg: "Doação registrada com sucesso!" });
   } catch (err) {
-    console.error("Erro ao registrar doação:", err);
+    console.error(" Erro ao registrar doação:", err);
     res.status(500).json({ error: "Erro ao registrar doação." });
   }
-}
+};
 
+
+export const getTotalAlimentos = async (req, res) => {
+  try {
+    console.log("📍 Entrou em getTotalAlimentos");
+    const { ano } = req.params;
+    console.log("➡️ Ano recebido:", ano);
+
+    const query = `
+      SELECT SUM(Alimento_Total) AS totalAlimentos
+      FROM Alimentos
+      WHERE YEAR(created_at) = ?;
+    `;
+    console.log("🧩 Query executada:", query);
+
+    const [rows] = await db.query(query, [ano]);
+    console.log("✅ Resultado da query:", rows);
+
+    res.json(rows[0]);
+  } catch (err) {
+    console.error("❌ Erro em getTotalAlimentos:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+export const getRankingGrupos = async (req, res) => {
+  try {
+    console.log("📍 Entrou em getRankingGrupos");
+    const { ano } = req.params;
+    console.log("➡️ Ano recebido:", ano);
+
+    const query = `
+      SELECT 
+        g.Grupo_Nome AS grupo,
+        COUNT(a.ID_Alimento) AS totalAlimentos
+      FROM Alimentos a
+      INNER JOIN Grupo g ON a.ID_Grupo = g.Id_Grupo
+      WHERE YEAR(a.created_at) = ?
+      GROUP BY g.Grupo_Nome
+      ORDER BY totalAlimentos DESC;
+    `;
+
+    console.log("🧩 Query executada:", query.replace("?", ano));
+
+    const [rows] = await db.query(query, [ano]);
+    console.log("✅ Resultado da query getRankingGrupos:", rows);
+
+    res.json(rows);
+  } catch (err) {
+    console.error("❌ Erro em getRankingGrupos:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+export const getQuantidadeAlunos = async (req, res) => {
+  try {
+    console.log("📍 Entrou em getQuantidadeAlunos");
+    const { ano } = req.params;
+    console.log("➡️ Ano recebido:", ano);
+
+    const query = `
+      SELECT COUNT(*) AS totalAlunos 
+      FROM Aluno 
+      WHERE YEAR(created_at) = ?;
+    `;
+    console.log("🧩 Query executada:", query);
+
+    const [rows] = await db.query(query, [ano]);
+    console.log("✅ Resultado da query:", rows);
+
+    res.json(rows[0]);
+  } catch (err) {
+    console.error("❌ Erro em getQuantidadeAlunos:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+export const getQuantidadeUsuarios = async (req, res) => {
+  try {
+    console.log("📍 Entrou em getQuantidadeUsuarios");
+    const { ano } = req.params;
+    console.log("➡️ Ano recebido:", ano);
+
+    const query = `
+      SELECT COUNT(*) AS totalUsuarios 
+      FROM Usuario 
+      WHERE YEAR(created_at) = ?;
+    `;
+    console.log("🧩 Query executada:", query);
+
+    const [rows] = await db.query(query, [ano]);
+    console.log("✅ Resultado da query:", rows);
+
+    res.json(rows[0]);
+  } catch (err) {
+    console.error("❌ Erro em getQuantidadeUsuarios:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+export const getQuantidadeDoacoes = async (req, res) => {
+  try {
+    console.log("📍 Entrou em getQuantidadeDoacoes");
+    const { ano } = req.params;
+    console.log("➡️ Ano recebido:", ano);
+
+    const query = `
+      SELECT COUNT(*) AS totalDoacoes, SUM(transacao_Valor) AS valorTotal
+      FROM TransacaoEntrada
+      WHERE YEAR(created_at) = ?;
+    `;
+    console.log("🧩 Query executada:", query);
+
+    const [rows] = await db.query(query, [ano]);
+    console.log("✅ Resultado da query:", rows);
+
+    res.json(rows[0]);
+  } catch (err) {
+    console.error("❌ Erro em getQuantidadeDoacoes:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+export const getGrupos = async (req, res) => {
+  try {
+    console.log("📍 Entrou em getGrupos");
+
+    const query = `
+      SELECT g.Grupo_Nome, g.Grupo_Curso, COUNT(a.ID_Aluno) AS totalAlunos
+      FROM Grupo g
+      LEFT JOIN Aluno a ON a.Aluno_Grupo = g.Grupo_Nome
+      GROUP BY g.Grupo_Nome, g.Grupo_Curso;
+    `;
+    console.log("🧩 Query executada:", query);
+
+    const [rows] = await db.query(query);
+    console.log("✅ Resultado da query:", rows);
+
+    res.json(rows);
+  } catch (err) {
+    console.error("❌ Erro em getGrupos:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+};
+export const gruposAno = async (req, res) => {
+  try {
+    console.log("📍 Entrou em gruposAno");
+    const { ano } = req.params;
+
+    const [rows] = await db.query(`
+      SELECT * FROM Grupo WHERE YEAR(created_at) = ?
+    `, [ano]);
+
+
+
+    console.log("✅ Resultado da query gruposAno:", rows);
+
+    res.json(rows);
+  } catch (err) {
+    console.error("❌ Erro em gruposAno:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+export const getDistribuicaoGrupos = async (req, res) => {
+  try {
+    console.log("📍 Entrou em getDistribuicaoGrupos");
+    const { ano } = req.params;
+
+    const query = `
+      SELECT 
+        transacao_Grupo AS grupo,
+        COUNT(*) AS totalDoacoes
+      FROM TransacaoEntrada
+      WHERE YEAR(created_at) = ?
+      GROUP BY transacao_Grupo
+      ORDER BY totalDoacoes DESC;
+    `;
+
+    const [rows] = await db.query(query, [ano]);
+    console.log("✅ Resultado da query:", rows);
+
+    res.json(rows);
+  } catch (err) {
+    console.error("❌ Erro em getDistribuicaoGrupos:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+
+export const getEvolucaoAlimentos = async (req, res) => {
+  try {
+    console.log("📍 Entrou em getEvolucaoAlimentos");
+    const { ano } = req.params;
+
+    const query = `
+      SELECT 
+        MONTH(created_at) AS mes,
+        SUM(Alimento_Total) AS total
+      FROM Alimentos
+      WHERE YEAR(created_at) = ?
+      GROUP BY MONTH(created_at)
+      ORDER BY mes;
+    `;
+
+    const [rows] = await db.query(query, [ano]);
+    console.log("✅ Resultado da query:", rows);
+
+    res.json(rows);
+  } catch (err) {
+    console.error("❌ Erro em getEvolucaoAlimentos:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+
+
+export const getComparativoFinanceiro = async (req, res) => {
+  try {
+    console.log("📍 Entrou em getComparativoFinanceiro");
+    const { ano } = req.params;
+
+    const query = `
+      SELECT 
+        m.mes,
+        COALESCE(e.entrada, 0) AS entrada,
+        COALESCE(s.saida, 0) AS saida
+      FROM (
+        SELECT 1 AS mes UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 
+        UNION SELECT 5 UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 
+        UNION SELECT 9 UNION SELECT 10 UNION SELECT 11 UNION SELECT 12
+      ) m
+      LEFT JOIN (
+        SELECT MONTH(created_at) AS mes, SUM(transacao_Valor) AS entrada
+        FROM TransacaoEntrada
+        WHERE YEAR(created_at) = ?
+        GROUP BY MONTH(created_at)
+      ) e ON m.mes = e.mes
+      LEFT JOIN (
+        SELECT MONTH(created_at) AS mes, SUM(transacao_Valor) AS saida
+        FROM TransacaoSaida
+        WHERE YEAR(created_at) = ?
+        GROUP BY MONTH(created_at)
+      ) s ON m.mes = s.mes
+      ORDER BY m.mes;
+    `;
+
+    const [rows] = await db.query(query, [ano, ano]);
+    console.log("✅ Resultado da query:", rows);
+
+    res.json(rows);
+  } catch (err) {
+    console.error("❌ Erro em getComparativoFinanceiro:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+export const getStatusCampanhas = async (req, res) => {
+  try {
+    console.log("📍 Entrou em getStatusCampanhas");
+    const { ano } = req.params;
+
+    const query = `
+      SELECT 
+        SUM(CASE WHEN finish_at >= CURDATE() THEN 1 ELSE 0 END) AS ativas,
+        SUM(CASE WHEN finish_at < CURDATE() THEN 1 ELSE 0 END) AS concluidas,
+        SUM(CASE WHEN Campanha_Quantidade >= Campanha_Meta THEN 1 ELSE 0 END) AS metaAtingida,
+        ROUND(
+          (SUM(CASE WHEN Campanha_Quantidade >= Campanha_Meta THEN 1 ELSE 0 END) / COUNT(*)) * 100, 
+          0
+        ) AS taxaSucesso
+      FROM Campanha
+      WHERE YEAR(created_at) = ?;
+    `;
+
+    const [rows] = await db.query(query, [ano]);
+    console.log("✅ Resultado da query:", rows);
+
+    res.json(rows[0]);
+  } catch (err) {
+    console.error("❌ Erro em getStatusCampanhas:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+export const getTransacoes = async (req, res) => {
+  try {
+    const { ano } = req.params;
+    const query = `
+      SELECT 
+        MONTH(created_at) AS mes,
+        COUNT(*) AS total
+      FROM TransacaoEntrada
+      WHERE YEAR(created_at) = ?
+      GROUP BY MONTH(created_at)
+      ORDER BY mes;
+    `;
+    const [rows] = await db.query(query, [ano]);
+    res.json(rows);
+  } catch (err) {
+    console.error("❌ Erro em getTransacoes:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+
+export const getCampanhasGrafico = async (req, res) => {
+  try {
+    const { ano } = req.params;
+    const query = `
+      SELECT 
+        MONTH(created_at) AS mes,
+        COUNT(*) AS total
+      FROM Campanha
+      WHERE YEAR(created_at) = ?
+      GROUP BY MONTH(created_at)
+      ORDER BY mes;
+    `;
+    const [rows] = await db.query(query, [ano]);
+    res.json(rows);
+  } catch (err) {
+    console.error("❌ Erro em getCampanhas:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+};
 

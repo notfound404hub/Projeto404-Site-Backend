@@ -34,14 +34,14 @@ export const login = async (req, res) => {
         user = rowsAluno[0];
         tipo = "Aluno";
         const ok = await bcrypt.compare(senha, user.Aluno_Senha)
-        if (!ok) return res.status(401).json({ error: "Credenciais inválidas" })
+        if (!ok) return res.status(409).json({ error: "Credenciais inválidas" })
       } else if (rowsUsuario.length > 0) {
         user = rowsUsuario[0];
         tipo = "Usuario";
         const ok = await bcrypt.compare(senha, user.Usuario_Senha)
-        if (!ok) return res.status(401).json({ error: "Credenciais inválidas" })
+        if (!ok) return res.status(409).json({ error: "Credenciais inválidas" })
       } else {
-        return res.status(401).json({ error: "Credenciais inválidas" });
+        return res.status(409).json({ error: "Credenciais inválidas" });
       }
   
       const { token } = createToken({ id: user.ID_Aluno || user.ID_Usuario });
@@ -55,6 +55,7 @@ export const login = async (req, res) => {
         ID: user.ID_Aluno || user.ID_Usuario,
         nome: user.Aluno_Nome || user.Usuario_Nome,
         email: user.Aluno_Email || user.Usuario_Email,
+        Grupo: user.Aluno_Grupo || null
       });
     } catch (err) {
       console.error("login error:", err);
