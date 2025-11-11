@@ -87,22 +87,22 @@ export const alunos = async (req, res) => {
     }
 }
 
-const transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-    },
-});
+// const transporter = nodemailer.createTransport({
+//     service: "gmail",
+//     auth: {
+//         user: process.env.EMAIL_USER,
+//         pass: process.env.EMAIL_PASS,
+//     },
+// });
 
-transporter.verify((error, success) => {
-    if (error) {
-        console.error("❌ Erro ao conectar ao servidor SMTP:", error);
-    }
-    if (success) {
-        console.log("✅ Servidor SMTP pronto para enviar mensagens!");
-    }
-});
+// transporter.verify((error, success) => {
+//     if (error) {
+//         console.error("❌ Erro ao conectar ao servidor SMTP:", error);
+//     }
+//     if (success) {
+//         console.log("✅ Servidor SMTP pronto para enviar mensagens!");
+//     }
+// });
 
 export const forgotPassword = async (req, res) => {
     const { email } = req.body
