@@ -28,6 +28,7 @@ import {
   chamados,
   AdicionarChamados,
   deleteChamado,
+  finalizarChamado,
   getMensagensChamado,
   enviarMensagem,
   doacoes,
@@ -147,6 +148,8 @@ r.post("/chamados", authMiddleware, chamados);
 r.post("/AdicionarChamados", authMiddleware, AdicionarChamados);
 
 r.delete("/deleteChamado", authMiddleware, deleteChamado);
+
+r.put("/finalizarChamado", authMiddleware, finalizarChamado);
 
 r.get("/getMensagensChamado/:ID_Chamado", authMiddleware, getMensagensChamado);
 

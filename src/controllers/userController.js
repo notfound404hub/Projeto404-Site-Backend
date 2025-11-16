@@ -1308,7 +1308,6 @@ export const AdicionarChamados = async (req, res) => {
      VALUES (?, ?, ?, ?)`,
       [novoIDChamado, Mensagem, Chamado_Criador, Criador_Tipo]
     );
-
     res.status(201).json({
       message: "Chamado criado com sucesso!",
       ID_Chamado: novoIDChamado,
@@ -1388,7 +1387,15 @@ export const enviarMensagem = async (req, res) => {
      VALUES (?, ?, ?, ?, NOW())`,
       [ID_Chamado, Mensagem, Remetente, Remetente_Tipo]
     );
-
+    console.log("id:" , Remetente)
+    console.log(Remetente_Tipo)
+    if( Remetente == "1" || Remetente_Tipo == "Usuario"){
+      await db.query(
+        "UPDATE Chamados SET Chamado_Status = 'Em solução' WHERE ID_Chamado = ?",
+      [ID_Chamado]
+      )
+    }
+    console.log(`O chamado ${ID_Chamado} recebeu uma nova mensagem de ${Remetente_Tipo} ${Remetente} e agora está como 'Em solução'.`);
     res.status(201).json({ message: "Mensagem enviada com sucesso!" });
   } catch (err) {
     console.error("Erro ao enviar mensagem:", err);
@@ -1799,6 +1806,42 @@ export const getCampanhasGrafico = async (req, res) => {
   } catch (err) {
     console.error("❌ Erro em getCampanhas:", err.message);
     res.status(500).json({ error: err.message });
+  }
+};
+
+// Finaliza um chamado (altera Chamado_Status para 'Finalizado')
+export const finalizarChamado = async (req, res) => {
+  const { ID_Chamado, Criador_Tipo } = req.body;
+console.log(ID_Chamado);
+console.log(Criador_Tipo);
+  if (!ID_Chamado || !Criador_Tipo) {
+    return res.status(400).json({ error: "ID_Chamado e Criador_Tipo são obrigatórios." });
+  }
+
+  try {
+    // Verifica existência do chamado e o tipo do criador
+    const [rows] = await db.query(
+      "SELECT * FROM Chamados WHERE ID_Chamado = ? AND Criador_Tipo = ?",
+      [ID_Chamado, Criador_Tipo]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: "Chamado não encontrado." });
+    }
+
+    const [result] = await db.query(
+      "UPDATE Chamados SET Chamado_Status = 'Finalizado' WHERE ID_Chamado = ? AND Criador_Tipo = ?",
+      [ID_Chamado, Criador_Tipo]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(500).json({ error: "Não foi possível finalizar o chamado." });
+    }
+
+    return res.status(200).json({ msg: "Chamado finalizado com sucesso!" });
+  } catch (err) {
+    console.error("Erro ao finalizar chamado:", err);
+    return res.status(500).json({ error: "Erro no servidor ao finalizar chamado." });
   }
 };
 
