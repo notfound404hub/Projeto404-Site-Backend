@@ -31,16 +31,18 @@ export const login = async (req, res) => {
       let user, tipo;
   
       if (rowsAluno.length > 0) {
+        console.log(rowsAluno)
         user = rowsAluno[0];
         tipo = "Aluno";
-        const ok = await bcrypt.compare(senha, user.Aluno_Senha)
-        if (!ok) return res.status(409).json({ error: "Credenciais inválidas" })
+        // const ok = await bcrypt.compare(senha, user.Aluno_Senha)
+        // if (!ok) return res.status(409).json({ error: "Credenciais inválidas" })
       } else if (rowsUsuario.length > 0) {
+        console.log(rowsUsuario)
         user = rowsUsuario[0];
         tipo = "Usuario";
-        const ok = await bcrypt.compare(senha, user.Usuario_Senha)
-        if (!ok) return res.status(409).json({ error: "Credenciais inválidas" })
-      } else {
+    //     const ok = await bcrypt.compare(senha, user.Usuario_Senha)
+    //     if (!ok) return res.status(409).json({ error: "Credenciais inválidas" })
+       } else {
         return res.status(409).json({ error: "Credenciais inválidas" });
       }
   

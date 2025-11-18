@@ -5,7 +5,6 @@ import {
   alunos,
   enviarEmailVerificacao,
   forgotPassword,
-  grupos,
   login,
   resetPassword,
   verificarEmail,
@@ -58,8 +57,6 @@ import {
   buscarCodigoAlimento
 
 } from "./controllers/userController.js";
-import { login, alunos, forgotPassword, resetPassword, enviarEmailVerificacao, verificarEmail} from "./controllers/authController.js"
-import { cadastroGrupo, cadastroAluno, gruposComAlunos, alunoGetById, updateAlunoById, deleteAlunoById, importarAlunos,usuarioGetById, tabelas, usuarioDeleteById, updateUsuarioById, getAllUsuarios, deleteFromTable, filtrar, ordenar, importarUsuarios, getCampanhas, updateCampanhaById, AlimentosGetById, AlimentosUpdateById, cadastroTransacao, updateTransacao, transacaoEntradaGetById, transacaoSaidaGetById, chamados, AdicionarChamados, deleteChamado, getMensagensChamado, buscarCodigoAlimento, doacoes, cadastroAlimento, enviarMensagem, getQuantidadeDoacoes, getQuantidadeUsuarios, getQuantidadeAlunos, getRankingGrupos, getTotalAlimentos, gruposAno, getCampanhasGrafico, getTransacoes, getStatusCampanhas, getComparativoFinanceiro, getEvolucaoAlimentos, getDistribuicaoGrupos  } from "./controllers/userController.js";
 import { authMiddleware } from "./middlewares/authMiddleware.js";
 
 console.log("userRoutes.js carregado");

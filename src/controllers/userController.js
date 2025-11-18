@@ -1679,4 +1679,159 @@ console.log(Criador_Tipo);
     return res.status(500).json({ error: "Erro no servidor ao finalizar chamado." });
   }
 };
+export const chamados = async (req, res) => {
+  let { Chamado_Criador, Criador_Tipo } = req.body;
 
+  try {
+    Chamado_Criador = Number(Chamado_Criador);
+
+    console.log("Buscando chamados do criador ID:", Chamado_Criador);
+    console.log("Buscando tipo do criador tipo:", Criador_Tipo);
+
+    let query = "SELECT * FROM Chamados";
+    let params = [];
+
+    if (!(Chamado_Criador === 1 && Criador_Tipo === "Usuario")) {
+      query += " WHERE Chamado_Criador = ? AND Criador_Tipo = ?";
+      params = [Chamado_Criador, Criador_Tipo];
+    }
+
+    console.log("Query:", query, "Params:", params);
+
+    const [rows] = await db.query(query, params);
+
+    if (rows.length > 0) {
+      return res.json(rows);
+    } else {
+      return res.status(404).json({
+        error: `Nenhum chamado encontrado para o criador ${Chamado_Criador} com o tipo ${Criador_Tipo}`,
+      });
+    }
+  } catch (err) {
+    console.error("Erro no SELECT:", err.sqlMessage || err.message);
+    return res.status(500).json({
+      error: `Erro no servidor ao buscar chamados do criador ${Chamado_Criador}`,
+    });
+  }
+};
+
+export const AdicionarChamados = async (req, res) => {
+  const { Chamado_Titulo, Mensagem, Chamado_Criador, Criador_Tipo } = req.body;
+  console.log("Titulo: ", Chamado_Criador);
+  console.log("Mensagem: ", Mensagem);
+  console.log("Chamado_Criador: ", Chamado_Criador);
+  console.log("Criador_Tipo: ", Criador_Tipo);
+  if (!Chamado_Titulo || !Mensagem || !Chamado_Criador || !Criador_Tipo) {
+    return res
+      .status(400)
+      .json({ error: "Campos obrigatórios não preenchidos." });
+  }
+
+  try {
+    const [resultChamado] = await db.query(
+      `INSERT INTO Chamados (Chamado_Titulo, Chamado_Status, Chamado_Criador, Criador_Tipo)
+     VALUES (?, 'Aberto', ?, ?)`,
+      [Chamado_Titulo, Chamado_Criador, Criador_Tipo]
+    );
+
+    const novoIDChamado = resultChamado.insertId;
+
+    await db.query(
+      `INSERT INTO ChamadosMensagem (ID_Chamado, Mensagem, Remetente, Tipo_Remetente)
+     VALUES (?, ?, ?, ?)`,
+      [novoIDChamado, Mensagem, Chamado_Criador, Criador_Tipo]
+    );
+    res.status(201).json({
+      message: "Chamado criado com sucesso!",
+      ID_Chamado: novoIDChamado,
+    });
+  } catch (err) {
+    console.error("Erro ao criar chamado:", err);
+    res.status(500).json({ error: "Erro no servidor ao criar chamado." });
+  }
+};
+export const deleteChamado = async (req, res) => {
+  const { ID_Chamado, Criador_Tipo } = req.body;
+  console.log(ID_Chamado);
+  console.log(Criador_Tipo);
+  if (!ID_Chamado || !Criador_Tipo) {
+    return res.status(400).json({ error: "ID do chamado ou Criado Tipo não informado." });
+  }
+
+  try {
+    const [chamadoExiste] = await db.query(
+      "SELECT * FROM Chamados WHERE ID_Chamado = ? AND Criador_Tipo = ?",
+      [ID_Chamado, Criador_Tipo]
+    );
+
+    if (chamadoExiste.length === 0) {
+      return res.status(404).json({ error: "Chamado não encontrado." });
+    }
+
+    await db.query("DELETE FROM ChamadosMensagem WHERE ID_Chamado = ?", [
+      ID_Chamado,
+    ]);
+
+    await db.query("DELETE FROM Chamados WHERE ID_Chamado = ? AND Criador_Tipo = ?", [ID_Chamado, Criador_Tipo]);
+
+    res.status(200).json({ message: "Chamado excluído com sucesso!" });
+  } catch (err) {
+    console.error("Erro ao excluir chamado:", err);
+    res.status(500).json({ error: "Erro no servidor ao excluir chamado." });
+  }
+};
+
+export const getMensagensChamado = async (req, res) => {
+  const { ID_Chamado } = req.params;
+  console.log(ID_Chamado)
+  if (!ID_Chamado) {
+    return res.status(400).json({ error: "ID do chamado não informado." });
+  }
+
+  try {
+    const [mensagens] = await db.query(
+      `SELECT 
+       *
+     FROM ChamadosMensagem
+     WHERE ID_Chamado = ?
+     ORDER BY created_at ASC`,
+      [ID_Chamado]
+    );
+
+    res.status(200).json(mensagens);
+  } catch (err) {
+    console.error("Erro ao buscar mensagens:", err);
+    res.status(500).json({ error: "Erro no servidor ao buscar mensagens." });
+  }
+};
+
+export const enviarMensagem = async (req, res) => {
+  const { ID_Chamado, Remetente, Mensagem, Remetente_Tipo } = req.body;
+  console.log(Remetente_Tipo)
+  if (!ID_Chamado || !Remetente || !Mensagem || !Remetente_Tipo) {
+    return res
+      .status(400)
+      .json({ error: "Campos obrigatórios não preenchidos." });
+  }
+
+  try {
+    await db.query(
+      `INSERT INTO ChamadosMensagem (ID_Chamado, Mensagem, Remetente, Tipo_Remetente ,created_at)
+     VALUES (?, ?, ?, ?, NOW())`,
+      [ID_Chamado, Mensagem, Remetente, Remetente_Tipo]
+    );
+    console.log("id:" , Remetente)
+    console.log(Remetente_Tipo)
+    if( Remetente == "1" || Remetente_Tipo == "Usuario"){
+      await db.query(
+        "UPDATE Chamados SET Chamado_Status = 'Em solução' WHERE ID_Chamado = ?",
+      [ID_Chamado]
+      )
+    }
+    console.log(`O chamado ${ID_Chamado} recebeu uma nova mensagem de ${Remetente_Tipo} ${Remetente} e agora está como 'Em solução'.`);
+    res.status(201).json({ message: "Mensagem enviada com sucesso!" });
+  } catch (err) {
+    console.error("Erro ao enviar mensagem:", err);
+    res.status(500).json({ error: "Erro no servidor ao enviar mensagem." });
+  }
+};
