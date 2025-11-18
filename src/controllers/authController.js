@@ -87,43 +87,22 @@ export const alunos = async (req, res) => {
     }
 }
 
-export const grupos = async (req, res) => {
-    const { nome, curso } = req.body
+// const transporter = nodemailer.createTransport({
+//     service: "gmail",
+//     auth: {
+//         user: process.env.EMAIL_USER,
+//         pass: process.env.EMAIL_PASS,
+//     },
+// });
 
-    try {
-        const [rows] = await db.query("SELECT * FROM Grupo WHERE Grupo_Nome = ?", [nome])
-
-        if (rows.length) return res.status(409).json({ error: "Grupo já cadastrado" })
-
-        await db.query("BEGIN")
-
-        await db.query("INSERT INTO Grupo(Grupo_Nome, Grupo_Curso) VALUES (?, ?)", [nome, curso])
-        res.status(201).json({ msg: "Grupo cadastrado com sucesso!" })
-        await db.query("COMMIT")
-
-    } catch (err) {
-        console.error("register error", err)
-        res.status(500).json({ error: "Error ao registrar grupo" })
-        await db.query("ROLLBACK")
-    }
-}
-
-const transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-    },
-});
-
-transporter.verify((error, success) => {
-    if (error) {
-        console.error("❌ Erro ao conectar ao servidor SMTP:", error);
-    }
-    if (success) {
-        console.log("✅ Servidor SMTP pronto para enviar mensagens!");
-    }
-});
+// transporter.verify((error, success) => {
+//     if (error) {
+//         console.error("❌ Erro ao conectar ao servidor SMTP:", error);
+//     }
+//     if (success) {
+//         console.log("✅ Servidor SMTP pronto para enviar mensagens!");
+//     }
+// });
 
 export const forgotPassword = async (req, res) => {
     const { email } = req.body

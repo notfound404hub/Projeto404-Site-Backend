@@ -10,19 +10,7 @@ const pool = mysql.createPool({
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
-    port: process.env.DB_PORT   
+    port: 3306
 });
-
-(async () => {
-    try {
-        const connection = await pool.getConnection();
-        console.log("Conexão com MySQL estabelecida com sucesso!");
-        console.log(`Host: ${process.env.DB_HOST}`);
-        console.log(`Database: ${process.env.DB_NAME}`);
-        connection.release();
-    } catch (err) {
-        console.error("Erro ao conectar no MySQL:", err.message);
-    }
-})();
 
 export default pool;
